@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { login } from "@/lib/api";
 import { Link, useNavigate } from "react-router-dom";
 import { IconBox, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -31,38 +32,40 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password || !role) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate authentication
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    toast.success("Login successful!");
-    
-    // Navigate based on role
-    switch (role) {
-      case "store-manager":
-        navigate("/dashboard/store");
-        break;
-      case "analyst":
-        navigate("/dashboard/analyst");
-        break;
-      case "warehouse":
-        navigate("/dashboard/warehouse");
-        break;
-      case "admin":
-        navigate("/dashboard/admin");
-        break;
-      default:
-        navigate("/dashboard/store");
+    try {
+      const data = await login(email, password);
+      localStorage.setItem('token', data.access_token);
+      toast.success("Login successful!");
+
+      // Navigate based on role (Note: in a real app, you'd decode the token or fetch user profile to get the role)
+      switch (role) {
+        case "store-manager":
+          navigate("/dashboard/store");
+          break;
+        case "analyst":
+          navigate("/dashboard/analyst");
+          break;
+        case "warehouse":
+          navigate("/dashboard/warehouse");
+          break;
+        case "admin":
+          navigate("/dashboard/admin");
+          break;
+        default:
+          navigate("/dashboard/store");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (

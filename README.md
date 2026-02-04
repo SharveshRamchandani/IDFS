@@ -25,8 +25,11 @@ A modern, comprehensive web application designed for intelligent inventory manag
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Framework (Frontend)**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Framework (Backend)**: [FastAPI](https://fastapi.tiangolo.com/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/) (Frontend), [Python](https://www.python.org/) (Backend)
+- **Database**: [PostgreSQL](https://www.postgresql.org/) (via [SQLAlchemy](https://www.sqlalchemy.org/))
+- **Data Science**: [Pandas](https://pandas.pydata.org/), [Scikit-learn](https://scikit-learn.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix UI)
 - **State Management**: [TanStack Query](https://tanstack.com/query/latest)
@@ -34,7 +37,7 @@ A modern, comprehensive web application designed for intelligent inventory manag
 
 ## 📂 Project Structure
 
-The project currently consists of a frontend application:
+The project consists of a React frontend and a FastAPI backend:
 
 ```
 IDFS/
@@ -42,6 +45,15 @@ IDFS/
 │   ├── src/
 │   ├── public/
 │   └── package.json
+├── backend/            # The FastAPI server application
+│   ├── app/            # Application source code
+│   │   ├── api/        # API endpoints
+│   │   ├── core/       # Configurations
+│   │   ├── db/         # Database models and session
+│   │   ├── models/     # SQLAlchemy models
+│   │   └── schemas/    # Pydantic schemas
+│   ├── requirements.txt # Python dependencies
+│   └── main.py         # Entry point script
 └── README.md           # This file
 ```
 
@@ -53,32 +65,65 @@ IDFS/
 
 ### Installation & Running
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd IDFS
-   ```
+### Installation & Running
 
-2. **Navigate to the frontend directory**
-   ```bash
-   cd frontend
-   ```
+#### 1. Backend Setup
 
-3. **Install dependencies**
-   ```bash
-   npm install
-   ```
+1.  **Navigate to the backend directory**
+    ```bash
+    cd backend
+    ```
 
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+2.  **Create a virtual environment (Optional but Recommended)**
+    ```bash
+    python -m venv venv
+    # Windows
+    .\venv\Scripts\activate
+    # macOS/Linux
+    source venv/bin/activate
+    ```
 
-5. **Build for production**
-   To create a production-ready build:
-   ```bash
-   npm run build
-   ```
+3.  **Install dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Initialize the Database**
+    ```bash
+    # Update backend/app/core/config.py with your DB credentials if needed
+    # Default is SQLite for local development
+    python app/db/init_db.py
+    ```
+
+5.  **Start the Backend Server**
+    ```bash
+    python main.py
+    # The API will be available at http://127.0.0.1:8000
+    # Interactive Docs: http://127.0.0.1:8000/docs
+    ```
+
+#### 2. Frontend Setup
+
+1.  **Navigate to the frontend directory** (from project root)
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Start the development server**
+    ```bash
+    npm run dev
+    ```
+
+4.  **Build for production**
+    To create a production-ready build:
+    ```bash
+    npm run build
+    ```
 
 ## 🤝 Contributing
 
