@@ -13,14 +13,20 @@ async def upload_sales_data(
     file: UploadFile = File(...),
     db: Session = Depends(deps.get_db)
 ):
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Invalid file format. Please upload a CSV file.")
-    
-    contents = await file.read()
-    try:
-        df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
-    except Exception as e:
-         raise HTTPException(status_code=400, detail=f"Error reading CSV file: {str(e)}")
+    if file.filename.endswith('.csv'):
+        contents = await file.read()
+        try:
+             df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+        except Exception as e:
+             raise HTTPException(status_code=400, detail=f"Error reading CSV file: {str(e)}")
+    elif file.filename.endswith(('.xls', '.xlsx')):
+        contents = await file.read()
+        try:
+             df = pd.read_excel(io.BytesIO(contents))
+        except Exception as e:
+             raise HTTPException(status_code=400, detail=f"Error reading Excel file: {str(e)}")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid file format. Please upload a CSV or Excel file.")
 
     if df.empty:
          raise HTTPException(status_code=400, detail="The uploaded file is empty.")

@@ -3,6 +3,7 @@ from app.db.session import engine
 # Make sure to import all models here so they are registered with Base.metadata
 from app.models.user import User
 from app.models.sales import Product, Store, SalesData
+from app.models.forecast import Forecast
 
 def init_db():
     Base.metadata.create_all(bind=engine)

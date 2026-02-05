@@ -15,3 +15,4 @@ numpy
 scikit-learn
 statsmodels
 python-dotenv
+openpyxl

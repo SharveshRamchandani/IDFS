@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import date
 from sqlalchemy.orm import Session
 from app.models.sales import SalesData, Product, Store
 from app.schemas.sales import ProductCreate, StoreCreate, SalesDataCreate
