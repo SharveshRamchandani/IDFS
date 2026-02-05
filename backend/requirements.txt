@@ -14,5 +14,6 @@ pandas
 numpy
 scikit-learn
 statsmodels
+prophet
 python-dotenv
 openpyxl

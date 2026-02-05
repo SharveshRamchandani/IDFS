@@ -1,17 +1,26 @@
 import pandas as pd
-from .config import MLConfig
+from .model import forecaster
+from typing import List, Dict, Optional
 
-def load_model(path: str = MLConfig.MODEL_PATH):
+def load_model():
     """
-    Load the trained model from disk.
+    Ensure the singleton model is loaded.
     """
-    # return joblib.load(path)
-    return None
+    return forecaster.load_model()
 
-def predict_demand(model, input_data: pd.DataFrame):
+def predict_demand(days: int = 30, future_promotions: Optional[List[int]] = None) -> List[Dict]:
     """
-    Generate sales forecasts using the trained model.
+    Generate sales forecasts using the trained singleton model.
     """
-    # predictions = model.predict(input_data)
-    # return predictions
-    return []
+    if not forecaster.is_trained:
+        if not load_model():
+            return {"error": "Model not trained or found"}
+            
+    return forecaster.predict(days=days, future_promotions=future_promotions)
+    
+def get_components(days: int = 30) -> Dict:
+    """
+    Get trend and seasonality components.
+    """
+    return forecaster.get_model_components(days=days)
+

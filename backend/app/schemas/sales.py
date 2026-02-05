@@ -35,6 +35,7 @@ class Store(StoreBase):
 class SalesDataBase(BaseModel):
     date: date
     quantity: int
+    onpromotion: bool = False
 
 class SalesDataCreate(SalesDataBase):
     sku: str # Reference by SKU

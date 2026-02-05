@@ -1,12 +1,58 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
-from app.crud import crud_sales
+from app.crud import crud_sales, crud_holiday
 from app.schemas.sales import ProductCreate, StoreCreate, SalesDataCreate
+from app.schemas.holiday import HolidayCreate
 import pandas as pd
 import io
 
 router = APIRouter()
+
+@router.post("/upload/holidays")
+async def upload_holidays(
+    file: UploadFile = File(...),
+    db: Session = Depends(deps.get_db)
+):
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files allowed for holidays.")
+        
+    contents = await file.read()
+    try:
+        df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading CSV: {e}")
+        
+    # Validation
+    required_cols = ['date', 'type', 'locale', 'locale_name', 'description', 'transferred']
+    if not all(col in df.columns for col in required_cols):
+        raise HTTPException(status_code=400, detail=f"Missing columns: {required_cols}")
+        
+    results = {"added": 0, "errors": []}
+    
+    for index, row in df.iterrows():
+        try:
+            d = pd.to_datetime(row['date']).date()
+            
+            # Check duplicate
+            exists = crud_holiday.get_holiday_by_date_locale(db, d, str(row['locale_name']))
+            if exists:
+                continue
+                
+            obj_in = HolidayCreate(
+                date=d,
+                type=str(row['type']),
+                locale=str(row['locale']),
+                locale_name=str(row['locale_name']),
+                description=str(row['description']),
+                transferred=bool(row['transferred'])
+            )
+            crud_holiday.create_holiday(db, obj_in)
+            results["added"] += 1
+        except Exception as e:
+            results["errors"].append(f"Row {index}: {e}")
+            
+    return results
 
 @router.post("/upload")
 async def upload_sales_data(
@@ -96,11 +142,22 @@ async def upload_sales_data(
                 results["skipped_rows"] += 1
                 continue
 
+            # Handle promotion column safely
+            on_promo = False
+            if 'onpromotion' in row:
+                try:
+                    # Handle various truthy values (1, 'True', 'true', '1')
+                    val = str(row['onpromotion']).lower()
+                    on_promo = val in ['1', 'true', 'yes', '1.0']
+                except:
+                    on_promo = False
+
             sales_in = SalesDataCreate(
                 date=row_date,
                 quantity=qty,
                 sku=str(row['sku']),
-                store_id=str(row['store_id'])
+                store_id=str(row['store_id']),
+                onpromotion=on_promo
             )
             crud_sales.create_sales_data(db, sales_in, product.id, store.id)
             results["added_rows"] += 1

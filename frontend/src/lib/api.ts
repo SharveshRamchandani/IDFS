@@ -34,3 +34,46 @@ export async function signup(userData) {
 
     return response.json();
 }
+
+
+export async function getGlobalForecast(days = 30, detailed = false) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/forecasting/global?days=${days}&detailed=${detailed}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch forecast');
+    }
+    return response.json();
+}
+
+export async function triggerTraining(autoTune = false) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/training/train?auto_tune=${autoTune}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.json();
+}
+
+export async function getTrainingStatus() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/training/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+}
+
+export async function getDashboardStats() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/dashboard/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+}

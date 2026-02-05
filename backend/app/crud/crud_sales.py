@@ -39,7 +39,8 @@ def create_sales_data(db: Session, obj_in: SalesDataCreate, product_id: int, sto
         date=obj_in.date,
         sku_id=product_id,
         store_id=store_db_id,
-        quantity=obj_in.quantity
+        quantity=obj_in.quantity,
+        onpromotion=obj_in.onpromotion
     )
     db.add(db_obj)
     db.commit()
@@ -81,3 +82,37 @@ def get_sales_data_detail(db: Session, date: date, sku_id: int, store_id: int) -
         .first()
     )
 
+from sqlalchemy import func
+
+def get_total_revenue(db: Session) -> float:
+    # quantity * product.price
+    result = db.query(func.sum(SalesData.quantity * Product.price)).join(Product).scalar()
+    return result or 0.0
+
+def get_total_quantity(db: Session) -> int:
+    result = db.query(func.sum(SalesData.quantity)).scalar()
+    return result or 0
+
+def get_avg_daily_sales(db: Session) -> float:
+    # Total Quantity / Distinct Dates
+    total_qty = get_total_quantity(db)
+    distinct_dates = db.query(func.count(func.distinct(SalesData.date))).scalar()
+    if distinct_dates and distinct_dates > 0:
+        return total_qty / distinct_dates
+    return 0.0
+
+def get_top_stores(db: Session, limit: int = 5):
+    # Group by Store, Sum Revenue, Order Desc
+    return (
+        db.query(
+            Store.store_id, 
+            Store.region,
+            func.sum(SalesData.quantity * Product.price).label("revenue")
+        )
+        .join(SalesData.store)
+        .join(SalesData.product)
+        .group_by(Store.id, Store.store_id, Store.region)
+        .order_by(func.sum(SalesData.quantity * Product.price).desc())
+        .limit(limit)
+        .all()
+    )

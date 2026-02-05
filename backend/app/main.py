@@ -23,11 +23,51 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.on_event("startup")
 async def startup_event():
     from app.ml.model import forecaster
+    from app.db.session import SessionLocal
+    from app.crud import crud_holiday
+    from app.schemas.holiday import HolidayCreate
+    import pandas as pd
+    import os
+    
     print("Checking ML model status...")
     forecaster.load_model()
     if not forecaster.is_trained:
         print("Model not found. Training initial model with dummy data...")
-        forecaster.train()
+        # Note: In production we might not want to auto-train on startup if it takes too long
+        # forecaster.train() 
+        pass
+
+    # Check Holidays
+    db = SessionLocal()
+    try:
+        holidays_count = len(crud_holiday.get_all_holidays(db))
+        if holidays_count < 10:
+            csv_path = "data/holidays_events.csv"
+            if os.path.exists(csv_path):
+                print(f"🎄 Configuring Holidays from {csv_path}...")
+                df = pd.read_csv(csv_path)
+                added = 0
+                for _, row in df.iterrows():
+                    try:
+                        obj_in = HolidayCreate(
+                            date=pd.to_datetime(row['date']).date(),
+                            type=str(row['type']),
+                            locale=str(row['locale']),
+                            locale_name=str(row['locale_name']),
+                            description=str(row['description']),
+                            transferred=bool(row['transferred'])
+                        )
+                        crud_holiday.create_holiday(db, obj_in)
+                        added += 1
+                    except:
+                        pass
+                print(f"✅ Auto-Seeded {added} holidays.")
+            else:
+                print("⚠️ No holidays.csv found.")
+    except Exception as e:
+        print(f"❌ Holiday seed failed: {e}")
+    finally:
+        db.close()
 
 @app.get("/")
 def root():

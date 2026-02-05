@@ -87,3 +87,56 @@ def predict_demand(
         "forecast_values": [round(x, 2) for x in forecast_values],
         "method": method
     }
+
+@router.get("/global")
+def predict_global_demand(days: int = 30, detailed: bool = False):
+    """
+    Generate global demand forecast using the advanced Prophet model.
+    Optionally returns detailed components (trend, seasonality).
+    """
+    from app.ml.inference import predict_demand, get_components
+    
+    try:
+        forecast = predict_demand(days=days)
+        if isinstance(forecast, dict) and "error" in forecast:
+             raise HTTPException(status_code=503, detail=forecast["error"])
+             
+        response = {
+            "forecast": forecast,
+            "method": "Facebook Prophet (Enhanced)"
+        }
+        
+        if detailed:
+            components = get_components(days=days)
+            if components:
+                response["components"] = components
+                
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+from typing import List, Optional
+from pydantic import BaseModel
+
+class SimulationRequest(BaseModel):
+    days: int = 30
+    promotion_schedule: List[int] # 0 or 1 for each day
+
+@router.post("/simulate")
+def simulate_forecast_scenario(request: SimulationRequest):
+    """
+    Run a 'What-If' simulation for future promotions.
+    """
+    from app.ml.model import forecaster
+    
+    if not forecaster.is_trained:
+        raise HTTPException(status_code=503, detail="Model is not trained.")
+        
+    try:
+        result = forecaster.simulate_scenario(
+            days=request.days, 
+            promotion_schedule=request.promotion_schedule
+        )
+        return {"scenario_forecast": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

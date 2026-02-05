@@ -1,6 +1,16 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
+
+class Holiday(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, index=True, nullable=False)
+    type = Column(String, index=True) # Holiday, Event, Transfer
+    locale = Column(String, index=True) # Local, Regional, National
+    locale_name = Column(String) # Name of city/state
+    description = Column(String) # "Christmas", "Foundation Day"
+    transferred = Column(Boolean, default=False)
+
 
 class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
@@ -23,6 +33,7 @@ class SalesData(Base):
     sku_id = Column(Integer, ForeignKey("product.id"))
     store_id = Column(Integer, ForeignKey("store.id"))
     quantity = Column(Integer, nullable=False)
+    onpromotion = Column(Boolean, default=False)
     
     product = relationship("Product", back_populates="sales")
     store = relationship("Store", back_populates="sales")
