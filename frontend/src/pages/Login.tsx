@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { login } from "@/lib/api";
+import { login, loginWithGoogle } from "@/lib/api";
+import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom";
 import { IconBox, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,25 @@ export default function Login() {
     } catch (error) {
       console.error(error);
       toast.error(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    console.log("🟢 Google Auth Response Received:", credentialResponse);
+    try {
+      setIsLoading(true);
+      console.log("🔄 Sending token to backend for verification...");
+      const data = await loginWithGoogle(credentialResponse);
+      console.log("✅ Backend Verification Successful:", data);
+
+      localStorage.setItem('access_token', data.access_token);
+      toast.success("Google Login successful!");
+      navigate("/dashboard/analyst");
+    } catch (error: any) {
+      console.error("❌ Google Login Process Failed:", error);
+      toast.error(error.message || "Google Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -166,6 +186,25 @@ export default function Login() {
                   "Sign in"
                 )}
               </Button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google Login Failed')}
+                  useOneTap
+                />
+              </div>
             </form>
           </CardContent>
         </Card>

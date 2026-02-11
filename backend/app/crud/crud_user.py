@@ -1,5 +1,6 @@
-from typing import Optional, Any
+from typing import Optional, Any, Union, Dict
 from sqlalchemy.orm import Session
+from fastapi.encoders import jsonable_encoder
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
@@ -30,3 +31,27 @@ def authenticate(db: Session, email: str, password: str) -> Optional[User]:
     if not verify_password(password, user.hashed_password):
         return None
     return user
+
+def update(
+    db: Session, *, db_obj: User, obj_in: Union[UserUpdate, Dict[str, Any]]
+) -> User:
+    obj_data = jsonable_encoder(db_obj)
+    if isinstance(obj_in, dict):
+        update_data = obj_in
+    else:
+        update_data = obj_in.model_dump(exclude_unset=True)
+    
+    # Handle password update specifically
+    if "password" in update_data and update_data["password"]:
+        hashed_password = get_password_hash(update_data["password"])
+        del update_data["password"]
+        update_data["hashed_password"] = hashed_password
+        
+    for field in obj_data:
+        if field in update_data:
+            setattr(db_obj, field, update_data[field])
+            
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj

@@ -6,10 +6,15 @@ from app.crud import crud_sales
 import numpy as np
 import pandas as pd
 
+from app import models
+
 router = APIRouter()
 
 @router.get("/metrics")
-def get_model_metrics(db: Session = Depends(deps.get_db)) -> Dict[str, Any]:
+def get_model_metrics(
+    current_user: models.user.User = Depends(deps.get_current_analyst_user),
+    db: Session = Depends(deps.get_db)
+) -> Dict[str, Any]:
     """
     Evaluate the performance of the current forecasting logic.
     Calculates accuracy metrics on a subset of recent data.

@@ -3,38 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-
-interface LowStockItem {
-  id: string;
-  name: string;
-  sku: string;
-  currentStock: number;
-  threshold: number;
-  category: string;
-  urgency: "critical" | "warning" | "low";
-}
-
-const lowStockItems: LowStockItem[] = [
-  { id: "1", name: "KALLAX Shelf Unit", sku: "SKU-001234", currentStock: 5, threshold: 50, category: "Storage", urgency: "critical" },
-  { id: "2", name: "MALM Bed Frame", sku: "SKU-002345", currentStock: 12, threshold: 40, category: "Bedroom", urgency: "critical" },
-  { id: "3", name: "LACK Side Table", sku: "SKU-003456", currentStock: 23, threshold: 60, category: "Living Room", urgency: "warning" },
-  { id: "4", name: "BILLY Bookcase", sku: "SKU-004567", currentStock: 35, threshold: 80, category: "Storage", urgency: "warning" },
-  { id: "5", name: "POÄNG Armchair", sku: "SKU-005678", currentStock: 18, threshold: 35, category: "Living Room", urgency: "low" },
-];
-
-const urgencyStyles = {
-  critical: "bg-destructive/10 text-destructive border-destructive/20",
-  warning: "bg-warning/10 text-warning-foreground border-warning/20",
-  low: "bg-info/10 text-info border-info/20",
-};
-
-const urgencyLabels = {
-  critical: "Critical",
-  warning: "Warning",
-  low: "Low",
-};
+import { useEffect, useState } from "react";
+import { getInventory } from "@/lib/api";
 
 export function LowStockAlerts() {
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Determine low stock items on the frontend for now
+    getInventory().then((inv) => {
+      const lowStock = inv.filter((i: any) => i.status === 'low-stock' || i.status === 'out-of-stock');
+      setItems(lowStock.slice(0, 5));
+    }).catch(console.error);
+  }, []);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -52,13 +34,13 @@ export function LowStockAlerts() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {lowStockItems.map((item) => (
+          {items.map((item) => (
             <div key={item.id} className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{item.name}</span>
-                  <Badge variant="outline" className={urgencyStyles[item.urgency]}>
-                    {urgencyLabels[item.urgency]}
+                  <span className="font-medium truncate">{item.product_name}</span>
+                  <Badge variant="outline" className={item.status === 'out-of-stock' ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning-foreground"}>
+                    {item.status}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -69,15 +51,16 @@ export function LowStockAlerts() {
               </div>
               <div className="text-right shrink-0 w-32">
                 <div className="text-sm font-medium">
-                  {item.currentStock} / {item.threshold}
+                  {item.availableStock} / {item.threshold}
                 </div>
-                <Progress 
-                  value={(item.currentStock / item.threshold) * 100} 
+                <Progress
+                  value={(item.availableStock / item.threshold) * 100}
                   className="h-2 mt-1"
                 />
               </div>
             </div>
           ))}
+          {items.length === 0 && <div className="text-muted-foreground text-center py-4">No low stock alerts.</div>}
         </div>
       </CardContent>
     </Card>

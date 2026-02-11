@@ -8,11 +8,10 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
+allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:8000", "http://localhost:8080"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -26,18 +25,19 @@ async def startup_event():
     from app.db.session import SessionLocal
     from app.crud import crud_holiday
     from app.schemas.holiday import HolidayCreate
+    from app.db.init_db import init_db
     import pandas as pd
     import os
+    
+    print("🛠️ Initializing Database Tables...")
+    init_db()
     
     print("Checking ML model status...")
     forecaster.load_model()
     if not forecaster.is_trained:
         print("Model not found. Training initial model with dummy data...")
-        # Note: In production we might not want to auto-train on startup if it takes too long
-        # forecaster.train() 
         pass
 
-    # Check Holidays
     db = SessionLocal()
     try:
         holidays_count = len(crud_holiday.get_all_holidays(db))
@@ -84,13 +84,9 @@ def predict_test(days: int = 30, db: Session = Depends(deps.get_db)):
     if not forecaster.is_trained:
         return {"error": "Model not trained yet."}
     
-    # 1. Generate prediction
     prediction = forecaster.predict(days=days)
     
-    # 2. Save to Database
     try:
-        # Optional: Clear old future forecasts to avoid duplicates?
-        # For now, we just append new ones.
         new_forecasts = []
         for row in prediction:
             f = Forecast(

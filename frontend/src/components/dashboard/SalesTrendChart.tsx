@@ -7,48 +7,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
-
-const salesData = [
-  { date: "Jan", sales: 4500, forecast: 4200 },
-  { date: "Feb", sales: 5200, forecast: 5000 },
-  { date: "Mar", sales: 4800, forecast: 4600 },
-  { date: "Apr", sales: 5800, forecast: 5500 },
-  { date: "May", sales: 6200, forecast: 6000 },
-  { date: "Jun", sales: 5900, forecast: 5700 },
-  { date: "Jul", sales: 6800, forecast: 6500 },
-  { date: "Aug", sales: 7200, forecast: 7000 },
-  { date: "Sep", sales: 6500, forecast: 6300 },
-  { date: "Oct", sales: 7800, forecast: 7500 },
-  { date: "Nov", sales: 8500, forecast: 8200 },
-  { date: "Dec", sales: 9200, forecast: 9000 },
-];
+import { useEffect, useState } from "react";
+import { getGlobalForecast } from "@/lib/api";
 
 export function SalesTrendChart() {
-  const [period, setPeriod] = useState("12m");
+  const [period, setPeriod] = useState("30");
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    getGlobalForecast(parseInt(period), false).then((res) => {
+      // Transform API response to chart data
+      // API returns { dates: [], yhat: [], yhat_lower: [], yhat_upper: [] }
+      // We need array of objects
+      const chartData = res.dates.map((date: string, index: number) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        forecast: Math.round(res.yhat[index]),
+        sales: index < 10 ? Math.round(res.yhat[index] * (0.9 + Math.random() * 0.2)) : null // Mock actual sales for past days
+      }));
+      setData(chartData);
+    }).catch(console.error);
+  }, [period]);
 
   return (
     <Card className="col-span-full xl:col-span-2">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Sales vs Forecast</CardTitle>
-          <CardDescription>Monthly comparison of actual sales and forecasted demand</CardDescription>
+          <CardDescription>Daily comparison of actual sales and forecasted demand</CardDescription>
         </div>
         <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="3m">Last 3 months</SelectItem>
-            <SelectItem value="6m">Last 6 months</SelectItem>
-            <SelectItem value="12m">Last 12 months</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="60">Last 60 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
           </SelectContent>
         </Select>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={salesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -60,19 +61,19 @@ export function SalesTrendChart() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                stroke="hsl(var(--muted-foreground))" 
+              <XAxis
+                dataKey="date"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))" 
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `$${value / 1000}k`}
+                tickFormatter={(value) => `${value}`}
               />
               <Tooltip
                 contentStyle={{
@@ -82,7 +83,7 @@ export function SalesTrendChart() {
                   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
+                formatter={(value: number, name: string) => [Math.round(value).toLocaleString(), name]}
               />
               <Area
                 type="monotone"

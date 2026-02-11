@@ -12,12 +12,24 @@ import StoreManagerDashboard from "./pages/dashboard/StoreManagerDashboard";
 import AnalystDashboard from "./pages/dashboard/AnalystDashboard";
 import WarehouseDashboard from "./pages/dashboard/WarehouseDashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
+import AdminUsers from "./pages/admin/Users";
+import DataUpload from "./pages/DataUpload";
+
 
 // Inventory Pages
 import InventoryList from "./pages/inventory/InventoryList";
+import LowStock from "./pages/inventory/LowStock";
+import DeadStock from "./pages/inventory/DeadStock";
 
 // Forecasting Pages
 import DemandForecast from "./pages/forecasting/DemandForecast";
+
+// Supply Chain Pages
+import PurchaseOrders from "./pages/supply-chain/PurchaseOrders";
+import InboundShipments from "./pages/supply-chain/InboundShipments";
+import Suppliers from "./pages/supply-chain/Suppliers";
+import UserProfile from "./pages/UserProfile";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -42,21 +54,30 @@ const App = () => (
 
           {/* Inventory Routes */}
           <Route path="/inventory" element={<InventoryList />} />
+          <Route path="/inventory/low-stock" element={<LowStock />} />
+          <Route path="/inventory/dead-stock" element={<DeadStock />} />
 
           {/* Forecasting Routes */}
           <Route path="/forecasting/demand" element={<DemandForecast />} />
           <Route path="/forecasting/seasonal" element={<DemandForecast />} />
           <Route path="/forecasting/accuracy" element={<DemandForecast />} />
 
-          {/* Supply Chain Routes (placeholder) */}
-          <Route path="/supply-chain/orders" element={<WarehouseDashboard />} />
-          <Route path="/supply-chain/shipments" element={<WarehouseDashboard />} />
-          <Route path="/supply-chain/suppliers" element={<WarehouseDashboard />} />
+          {/* Supply Chain Routes */}
+          <Route path="/supply-chain/orders" element={<PurchaseOrders />} />
+          <Route path="/supply-chain/shipments" element={<InboundShipments />} />
+          <Route path="/supply-chain/suppliers" element={<Suppliers />} />
 
           {/* Admin Routes (placeholder) */}
-          <Route path="/admin/users" element={<AdminDashboard />} />
+
           <Route path="/admin/settings" element={<AdminDashboard />} />
           <Route path="/admin/thresholds" element={<AdminDashboard />} />
+
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/data/upload" element={<DataUpload />} />
+
+          {/* User Routes */}
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/notifications" element={<Notifications />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/login" replace />} />

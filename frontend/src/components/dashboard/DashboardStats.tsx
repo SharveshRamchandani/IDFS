@@ -1,6 +1,8 @@
 import { IconTrendingUp, IconTrendingDown, IconPackage, IconAlertTriangle, IconShoppingCart, IconTruck } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { getDashboardStats } from "@/lib/api";
 
 interface StatCardProps {
   title: string;
@@ -53,36 +55,39 @@ export function StatCard({ title, value, description, trend, icon: Icon, variant
 }
 
 export function DashboardStats() {
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    getDashboardStats().then(setStats).catch(console.error);
+  }, []);
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
         title="Total Products"
-        value="2,847"
-        description="Across 12 categories"
-        trend={{ value: 3.2, isPositive: true }}
+        value={stats?.total_products || "..."}
+        description="Active SKUs"
         icon={IconPackage}
       />
       <StatCard
-        title="Low Stock Items"
-        value="24"
-        description="Need reorder attention"
-        trend={{ value: 8, isPositive: false }}
+        title="Total Stores"
+        value={stats?.total_stores || "..."}
+        description="Active locations"
         icon={IconAlertTriangle}
-        variant="warning"
       />
       <StatCard
-        title="Pending Orders"
-        value="156"
-        description="Worth $234,500"
+        title="Daily Avg Sales"
+        value={stats ? Math.round(stats.avg_daily_sales).toLocaleString() : "..."}
+        description="Units per day"
         trend={{ value: 12, isPositive: true }}
         icon={IconShoppingCart}
       />
       <StatCard
-        title="Incoming Shipments"
-        value="8"
-        description="Arriving this week"
-        icon={IconTruck}
+        title="Total Revenue"
+        value={stats ? `$${(stats.total_revenue / 1000).toFixed(1)}k` : "..."}
+        description="All time"
         variant="success"
+        icon={IconTruck}
       />
     </div>
   );

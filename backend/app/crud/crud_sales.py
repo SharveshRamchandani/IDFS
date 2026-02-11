@@ -40,7 +40,7 @@ def create_sales_data(db: Session, obj_in: SalesDataCreate, product_id: int, sto
         sku_id=product_id,
         store_id=store_db_id,
         quantity=obj_in.quantity,
-        onpromotion=obj_in.onpromotion
+        # onpromotion=obj_in.onpromotion
     )
     db.add(db_obj)
     db.commit()
@@ -86,7 +86,7 @@ from sqlalchemy import func
 
 def get_total_revenue(db: Session) -> float:
     # quantity * product.price
-    result = db.query(func.sum(SalesData.quantity * Product.price)).join(Product).scalar()
+    result = db.query(func.sum(SalesData.quantity * Product.price)).select_from(SalesData).join(Product).scalar()
     return result or 0.0
 
 def get_total_quantity(db: Session) -> int:
@@ -109,8 +109,8 @@ def get_top_stores(db: Session, limit: int = 5):
             Store.region,
             func.sum(SalesData.quantity * Product.price).label("revenue")
         )
-        .join(SalesData.store)
-        .join(SalesData.product)
+        .join(SalesData)
+        .join(Product)
         .group_by(Store.id, Store.store_id, Store.region)
         .order_by(func.sum(SalesData.quantity * Product.price).desc())
         .limit(limit)

@@ -1,40 +1,22 @@
+
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconBuilding, IconUsers, IconAlertTriangle, IconTrendingUp, IconChartBar } from "@tabler/icons-react";
+import { IconBuilding, IconUsers, IconAlertTriangle, IconTrendingUp } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Bar, 
-  BarChart, 
-  CartesianGrid, 
-  XAxis, 
-  YAxis, 
-  ResponsiveContainer, 
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
   Tooltip,
   Cell
 } from "recharts";
-
-const systemStats = [
-  { title: "Active Stores", value: "24", icon: IconBuilding, description: "Across 5 regions" },
-  { title: "Total Users", value: "156", icon: IconUsers, description: "78 online now" },
-  { title: "Active Alerts", value: "12", icon: IconAlertTriangle, description: "3 critical" },
-  { title: "System Health", value: "99.8%", icon: IconTrendingUp, description: "All systems operational" },
-];
-
-const regionalData = [
-  { region: "North", revenue: 2450000, stores: 6, performance: 94 },
-  { region: "South", revenue: 1890000, stores: 5, performance: 87 },
-  { region: "East", revenue: 2120000, stores: 5, performance: 91 },
-  { region: "West", revenue: 1560000, stores: 4, performance: 82 },
-  { region: "Central", revenue: 2780000, stores: 4, performance: 96 },
-];
-
-const storeAlerts = [
-  { store: "Stockholm Central", alert: "Low stock on 15 items", severity: "warning", time: "2 hours ago" },
-  { store: "Malmö Store", alert: "System sync delayed", severity: "info", time: "4 hours ago" },
-  { store: "Gothenburg West", alert: "Critical stock level - KALLAX", severity: "critical", time: "30 min ago" },
-  { store: "Uppsala Store", alert: "Forecast accuracy below threshold", severity: "warning", time: "1 day ago" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardStats } from "@/lib/api";
+import { IconLoader2 } from "@tabler/icons-react";
 
 const severityStyles: Record<string, string> = {
   critical: "bg-destructive/10 text-destructive border-destructive/20",
@@ -43,6 +25,61 @@ const severityStyles: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
+  const { data: stats, isLoading, error } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: getDashboardStats,
+    refetchInterval: 30000 // Refresh every 30s
+  });
+
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Admin / HQ Dashboard">
+        <div className="flex h-[50vh] items-center justify-center">
+          <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Admin / HQ Dashboard">
+        <div className="flex h-[50vh] items-center justify-center text-destructive">
+          Error loading dashboard data. Please try again later.
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const systemStats = [
+    {
+      title: "Total Stores",
+      value: stats?.summary?.total_stores || 0,
+      icon: IconBuilding,
+      description: "Active locations"
+    },
+    {
+      title: "Total Products",
+      value: stats?.summary?.total_products || 0,
+      icon: IconUsers, // Using broadly as 'items'
+      description: "SKUs in catalog"
+    },
+    {
+      title: "Total Sales Records",
+      value: (stats?.summary?.total_sales_records || 0).toLocaleString(),
+      icon: IconTrendingUp,
+      description: "Historical data points"
+    },
+    {
+      title: "Avg Daily Sales",
+      value: Math.round(stats?.avg_daily_sales || 0),
+      icon: IconAlertTriangle, // Placeholder icon
+      description: "Units per day"
+    },
+  ];
+
+  const topStores = stats?.top_stores || [];
+
   return (
     <DashboardLayout title="Admin / HQ Dashboard">
       <div className="space-y-6">
@@ -66,27 +103,27 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Regional Revenue</CardTitle>
-              <CardDescription>Monthly revenue by region (in millions)</CardDescription>
+              <CardTitle>Top Stores by Revenue</CardTitle>
+              <CardDescription>Highest performing locations</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={regionalData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <BarChart data={topStores} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis 
-                      dataKey="region" 
-                      stroke="hsl(var(--muted-foreground))" 
+                    <XAxis
+                      dataKey="store_id"
+                      stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
                     />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))" 
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => `$${value / 1000000}M`}
+                      tickFormatter={(value) => `$${value / 1000}k`}
                     />
                     <Tooltip
                       contentStyle={{
@@ -94,12 +131,12 @@ export default function AdminDashboard() {
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
                       }}
-                      formatter={(value: number) => [`$${(value / 1000000).toFixed(2)}M`, "Revenue"]}
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
                     />
                     <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                      {regionalData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
+                      {topStores.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
                           fill={`hsl(var(--chart-${(index % 5) + 1}))`}
                         />
                       ))}
@@ -112,67 +149,32 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Store Performance</CardTitle>
-              <CardDescription>Inventory health by region</CardDescription>
+              <CardTitle>Recent Sales Activity</CardTitle>
+              <CardDescription>Latest transactions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {regionalData.map((region) => (
-                  <div key={region.region} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-medium">{region.region} Region</span>
-                        <span className="text-sm text-muted-foreground ml-2">({region.stores} stores)</span>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          region.performance >= 90 
-                            ? "text-success border-success/30" 
-                            : region.performance >= 80 
-                              ? "text-warning-foreground border-warning/30" 
-                              : "text-destructive border-destructive/30"
-                        }
-                      >
-                        {region.performance}%
-                      </Badge>
+              <div className="space-y-4">
+                {stats?.recent_sales?.map((sale, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 rounded-lg border bg-card/50">
+                    <div>
+                      <p className="font-medium">{sale.sku}</p>
+                      <p className="text-sm text-muted-foreground">{sale.store_id}</p>
                     </div>
-                    <Progress value={region.performance} className="h-2" />
+                    <div className="text-right">
+                      <p className="font-bold">{sale.quantity} units</p>
+                      <p className="text-xs text-muted-foreground">{sale.date}</p>
+                    </div>
                   </div>
                 ))}
+                {!stats?.recent_sales?.length && (
+                  <div className="text-center text-muted-foreground py-8">
+                    No recent sales found.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Store Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <IconAlertTriangle className="h-5 w-5 text-warning" />
-              System Alerts
-            </CardTitle>
-            <CardDescription>Recent alerts across all stores</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {storeAlerts.map((alert, index) => (
-                <div key={index} className="flex items-center gap-4 p-4 rounded-lg border">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{alert.store}</span>
-                      <Badge variant="outline" className={severityStyles[alert.severity]}>
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{alert.alert}</p>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{alert.time}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

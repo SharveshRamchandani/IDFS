@@ -5,10 +5,15 @@ from app.api import deps
 from app.crud import crud_sales
 import pandas as pd
 
+from app import models
+
 router = APIRouter()
 
 @router.get("/")
-def get_alerts(db: Session = Depends(deps.get_db)) -> Any:
+def get_alerts(
+    current_user: models.user.User = Depends(deps.get_current_analyst_user),
+    db: Session = Depends(deps.get_db)
+) -> Any:
     """
     Generate system alerts based on sales patterns.
     Currently detects:

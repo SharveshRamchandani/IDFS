@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
+from app import models
 from app.ml.training import train_model
 from app.core.training_manager import training_manager
 
@@ -26,6 +27,7 @@ def background_training_task(auto_tune: bool = False):
 def trigger_training(
     background_tasks: BackgroundTasks,
     auto_tune: bool = False,
+    current_user: models.user.User = Depends(deps.get_current_manager_user),
     db: Session = Depends(deps.get_db)
 ):
     """

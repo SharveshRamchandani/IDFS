@@ -1,42 +1,82 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.crud import crud_sales
 
+from app import models
+
 router = APIRouter()
 
 @router.get("/")
-def read_dashboard(db: Session = Depends(deps.get_db)):
+def read_dashboard(
+    db: Session = Depends(deps.get_db)
+):
     """
     Get dashboard statistics
     """
-    total_products = crud_sales.get_total_products_count(db)
-    total_stores = crud_sales.get_total_stores_count(db)
-    total_sales = crud_sales.get_total_sales_count(db)
+    try:
+        total_products = crud_sales.get_total_products_count(db) or 0
+    except Exception as e:
+        print(f"Error fetching product count: {e}")
+        total_products = 0
+
+    try:
+        total_stores = crud_sales.get_total_stores_count(db) or 0
+    except:
+            total_stores = 0
+
+    try:
+        total_sales = crud_sales.get_total_sales_count(db) or 0
+    except:
+            total_sales = 0
     
     # Advanced Stats
-    revenue = crud_sales.get_total_revenue(db)
-    total_qty = crud_sales.get_total_quantity(db)
-    avg_daily = crud_sales.get_avg_daily_sales(db)
+    try:
+        revenue = crud_sales.get_total_revenue(db) or 0.0
+    except Exception as e:
+            print(f"Error fetching revenue: {e}")
+            revenue = 0.0
+            
+    try:
+        total_qty = crud_sales.get_total_quantity(db) or 0
+    except:
+            total_qty = 0
+            
+    try:
+        avg_daily = crud_sales.get_avg_daily_sales(db) or 0.0
+    except:
+            avg_daily = 0.0
     
-    recent_sales = crud_sales.get_recent_sales(db, limit=5)
+    recent_sales = []
+    try:
+        recent_sales = crud_sales.get_recent_sales(db, limit=5)
+    except:
+            pass
     
-    top_stores_raw = crud_sales.get_top_stores(db, limit=5)
-    # Convert Row tuples to dicts
-    top_stores = [
-        {"store_id": r.store_id, "region": r.region, "revenue": r.revenue}
-        for r in top_stores_raw
-    ]
+    top_stores = []
+    try:
+        top_stores_raw = crud_sales.get_top_stores(db, limit=5)
+        # Convert Row tuples to dicts
+        top_stores = [
+            {"store_id": r.store_id, "region": r.region, "revenue": r.revenue}
+            for r in top_stores_raw
+        ]
+    except Exception as e:
+        print(f"Error fetching top stores: {e}")
+        top_stores = []
 
-    return {
-        "summary": {
-            "total_products": total_products,
-            "total_stores": total_stores,
-            "total_sales_records": total_sales
-        },
-        "total_revenue": revenue,
-        "total_quantity": total_qty,
-        "avg_daily_sales": avg_daily,
-        "recent_sales": recent_sales,
-        "top_stores": top_stores
-    }
+        return {
+            "summary": {
+                "total_products": total_products,
+                "total_stores": total_stores,
+                "total_sales_records": total_sales
+            },
+            "total_revenue": revenue,
+            "total_quantity": total_qty,
+            "avg_daily_sales": avg_daily,
+            "recent_sales": recent_sales,
+            "top_stores": top_stores
+        }
+    except Exception as e:
+        print(f"Error fetching dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

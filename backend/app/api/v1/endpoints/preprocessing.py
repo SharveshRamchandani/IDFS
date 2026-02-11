@@ -5,10 +5,15 @@ from app.crud import crud_sales
 import pandas as pd
 import numpy as np
 
+from app import models
+
 router = APIRouter()
 
 @router.post("/clean")
-def clean_data(db: Session = Depends(deps.get_db)):
+def clean_data(
+    current_user: models.user.User = Depends(deps.get_current_manager_user),
+    db: Session = Depends(deps.get_db)
+):
     """
     Trigger a data preprocessing pipeline.
     1. Identifies missing values.

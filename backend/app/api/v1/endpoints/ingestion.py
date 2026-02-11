@@ -1,9 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
-from app.crud import crud_sales, crud_holiday
-from app.schemas.sales import ProductCreate, StoreCreate, SalesDataCreate
-from app.schemas.holiday import HolidayCreate
+from app import crud, models, schemas
 import pandas as pd
 import io
 
@@ -12,6 +10,7 @@ router = APIRouter()
 @router.post("/upload/holidays")
 async def upload_holidays(
     file: UploadFile = File(...),
+    current_user: models.user.User = Depends(deps.get_current_manager_user),
     db: Session = Depends(deps.get_db)
 ):
     if not file.filename.endswith('.csv'):
@@ -35,7 +34,7 @@ async def upload_holidays(
             d = pd.to_datetime(row['date']).date()
             
             # Check duplicate
-            exists = crud_holiday.get_holiday_by_date_locale(db, d, str(row['locale_name']))
+            exists = crud.crud_holiday.get_holiday_by_date_locale(db, d, str(row['locale_name']))
             if exists:
                 continue
                 
@@ -47,7 +46,7 @@ async def upload_holidays(
                 description=str(row['description']),
                 transferred=bool(row['transferred'])
             )
-            crud_holiday.create_holiday(db, obj_in)
+            crud.crud_holiday.create_holiday(db, obj_in)
             results["added"] += 1
         except Exception as e:
             results["errors"].append(f"Row {index}: {e}")
@@ -57,6 +56,7 @@ async def upload_holidays(
 @router.post("/upload")
 async def upload_sales_data(
     file: UploadFile = File(...),
+    current_user: models.user.User = Depends(deps.get_current_manager_user),
     db: Session = Depends(deps.get_db)
 ):
     if file.filename.endswith('.csv'):
@@ -101,7 +101,7 @@ async def upload_sales_data(
                  continue
 
             # 1. Handle Product
-            product = crud_sales.get_product_by_sku(db, sku=str(row['sku']))
+            product = crud.crud_sales.get_product_by_sku(db, sku=str(row['sku']))
             if not product:
                 # Handle possible NaN for optional fields
                 category = row.get('category')
@@ -122,10 +122,10 @@ async def upload_sales_data(
                     category=category,
                     price=price
                 )
-                product = crud_sales.create_product(db, product_in)
+                product = crud.crud_sales.create_product(db, product_in)
             
             # 2. Handle Store
-            store = crud_sales.get_store_by_store_id(db, store_id=str(row['store_id']))
+            store = crud.crud_sales.get_store_by_store_id(db, store_id=str(row['store_id']))
             if not store:
                 region = row.get('region')
                 if pd.isna(region): region = None
@@ -134,10 +134,10 @@ async def upload_sales_data(
                     store_id=str(row['store_id']),
                     region=region
                 )
-                store = crud_sales.create_store(db, store_in)
+                store = crud.crud_sales.create_store(db, store_in)
             
             # 3. Handle Sales Data (Check for duplicates)
-            existing_sale = crud_sales.get_sales_data_detail(db, date=row_date, sku_id=product.id, store_id=store.id)
+            existing_sale = crud.crud_sales.get_sales_data_detail(db, date=row_date, sku_id=product.id, store_id=store.id)
             if existing_sale:
                 results["skipped_rows"] += 1
                 continue
@@ -159,7 +159,7 @@ async def upload_sales_data(
                 store_id=str(row['store_id']),
                 onpromotion=on_promo
             )
-            crud_sales.create_sales_data(db, sales_in, product.id, store.id)
+            crud.crud_sales.create_sales_data(db, sales_in, product.id, store.id)
             results["added_rows"] += 1
             
         except Exception as e:

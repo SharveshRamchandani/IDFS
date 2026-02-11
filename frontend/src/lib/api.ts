@@ -1,4 +1,4 @@
-export const API_URL = "http://127.0.0.1:8000/api/v1";
+export const API_URL = "http://localhost:8000/api/v1";
 
 export async function login(username, password) {
     const formData = new FormData();
@@ -13,6 +13,23 @@ export async function login(username, password) {
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Login failed');
+    }
+
+    return response.json();
+}
+
+export async function loginWithGoogle(credentialResponse) {
+    const response = await fetch(`${API_URL}/auth/login/google`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentialResponse),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Google Login failed');
     }
 
     return response.json();
@@ -59,6 +76,10 @@ export async function triggerTraining(autoTune = false) {
             'Authorization': `Bearer ${token}`
         }
     });
+
+    if (!response.ok) {
+        throw new Error('Training request failed');
+    }
     return response.json();
 }
 
@@ -67,6 +88,10 @@ export async function getTrainingStatus() {
     const response = await fetch(`${API_URL}/training/status`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
+
+    if (!response.ok) {
+        throw new Error('Failed to get training status');
+    }
     return response.json();
 }
 
@@ -75,5 +100,169 @@ export async function getDashboardStats() {
     const response = await fetch(`${API_URL}/dashboard/`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
+
+    if (!response.ok) {
+        throw new Error('Failed to get dashboard stats');
+    }
+    return response.json();
+}
+
+export async function uploadSalesData(file: File) {
+    const token = localStorage.getItem('access_token');
+    if (!token) throw new Error("No access token found");
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_URL}/ingestion/upload`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: formData
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Upload failed');
+    }
+    return response.json();
+}
+
+// User & Admin API
+export async function getUsers() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/users/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get users');
+    return response.json();
+}
+
+export async function updateUserRole(userId: number, role: string) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/users/${userId}/role?role=${role}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to update role');
+    return response.json();
+}
+
+export async function createUser(userData: any) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/users/`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to create user');
+    }
+    return response.json();
+}
+
+export async function getMe() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+
+    const response = await fetch(`${API_URL}/users/me`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        // If 401, maybe clear token? 
+        if (response.status === 401) {
+            localStorage.removeItem('access_token');
+            return null;
+        }
+        throw new Error('Failed to fetch user profile');
+    }
+    return response.json();
+}
+
+// Inventory API
+export async function getInventory() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/inventory/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get inventory');
+    return response.json();
+}
+
+// Supply Chain API
+export async function getSuppliers() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/supply-chain/suppliers`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get suppliers');
+    return response.json();
+}
+
+export async function getOrders() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/supply-chain/orders`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get orders');
+    return response.json();
+}
+
+export async function getShipments() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/supply-chain/shipments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get shipments');
+    return response.json();
+}
+
+export async function createProduct(productData: any) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/inventory/`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+    });
+    if (!response.ok) throw new Error('Failed to create product');
+    return response.json();
+}
+
+export async function createSupplier(supplierData: any) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/supply-chain/suppliers`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(supplierData)
+    });
+    if (!response.ok) throw new Error('Failed to create supplier');
+    return response.json();
+}
+
+export async function createOrder(orderData: any) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/supply-chain/orders`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+    });
+    if (!response.ok) throw new Error('Failed to create order');
     return response.json();
 }

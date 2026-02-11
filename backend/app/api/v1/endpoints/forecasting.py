@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
-from app.crud import crud_sales
+from app import models
+from app import crud
 import pandas as pd
 import numpy as np
 
@@ -12,6 +13,7 @@ def predict_demand(
     sku: str,
     store_id: str,
     days: int = 7,
+    current_user: models.user.User = Depends(deps.get_current_analyst_user),
     db: Session = Depends(deps.get_db)
 ):
     """
@@ -20,7 +22,7 @@ def predict_demand(
     if days < 1 or days > 365:
         raise HTTPException(status_code=400, detail="Forecast horizon (days) must be between 1 and 365.")
 
-    sales_data = crud_sales.get_sales_by_sku_store(db, sku=sku, store_id=store_id)
+    sales_data = crud.crud_sales.get_sales_by_sku_store(db, sku=sku, store_id=store_id)
     
     if not sales_data:
         raise HTTPException(status_code=404, detail="No historical data found for this product/store combination.")
@@ -89,7 +91,11 @@ def predict_demand(
     }
 
 @router.get("/global")
-def predict_global_demand(days: int = 30, detailed: bool = False):
+def predict_global_demand(
+    days: int = 30, 
+    detailed: bool = False,
+    current_user: models.user.User = Depends(deps.get_current_analyst_user)
+):
     """
     Generate global demand forecast using the advanced Prophet model.
     Optionally returns detailed components (trend, seasonality).
@@ -123,7 +129,10 @@ class SimulationRequest(BaseModel):
     promotion_schedule: List[int] # 0 or 1 for each day
 
 @router.post("/simulate")
-def simulate_forecast_scenario(request: SimulationRequest):
+def simulate_forecast_scenario(
+    request: SimulationRequest,
+    current_user: models.user.User = Depends(deps.get_current_analyst_user)
+):
     """
     Run a 'What-If' simulation for future promotions.
     """

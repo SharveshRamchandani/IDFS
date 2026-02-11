@@ -15,10 +15,12 @@ class Holiday(Base):
 class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     sku = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True)
     category = Column(String, index=True)
     price = Column(Float)
     
     sales = relationship("SalesData", back_populates="product")
+    inventory = relationship("StoreInventory", back_populates="product")
 
 class Store(Base):
     id = Column(Integer, primary_key=True, index=True)
@@ -26,6 +28,7 @@ class Store(Base):
     region = Column(String, index=True)
     
     sales = relationship("SalesData", back_populates="store")
+    inventory = relationship("StoreInventory", back_populates="store")
 
 class SalesData(Base):
     id = Column(Integer, primary_key=True, index=True)

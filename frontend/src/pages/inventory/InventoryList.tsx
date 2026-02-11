@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getInventory, createProduct } from "@/lib/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconSearch, IconFilter, IconDownload, IconPlus, IconPackage } from "@tabler/icons-react";
+import { IconSearch, IconDownload, IconPlus, IconPackage } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +22,21 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface Product {
-  id: string;
-  name: string;
+  id: number;
+  product_name: string;
   sku: string;
   category: string;
   availableStock: number;
@@ -33,19 +45,6 @@ interface Product {
   location: string;
   lastUpdated: string;
 }
-
-const products: Product[] = [
-  { id: "1", name: "KALLAX Shelf Unit, White", sku: "SKU-001234", category: "Storage", availableStock: 245, threshold: 50, status: "in-stock", location: "A-12-3", lastUpdated: "2024-01-15" },
-  { id: "2", name: "MALM Bed Frame, Black", sku: "SKU-002345", category: "Bedroom", availableStock: 12, threshold: 40, status: "low-stock", location: "B-08-1", lastUpdated: "2024-01-14" },
-  { id: "3", name: "LACK Side Table, Oak", sku: "SKU-003456", category: "Living Room", availableStock: 0, threshold: 60, status: "out-of-stock", location: "C-04-2", lastUpdated: "2024-01-13" },
-  { id: "4", name: "BILLY Bookcase, White", sku: "SKU-004567", category: "Storage", availableStock: 156, threshold: 80, status: "in-stock", location: "A-15-1", lastUpdated: "2024-01-15" },
-  { id: "5", name: "POÄNG Armchair, Birch", sku: "SKU-005678", category: "Living Room", availableStock: 18, threshold: 35, status: "low-stock", location: "D-02-4", lastUpdated: "2024-01-12" },
-  { id: "6", name: "ALEX Drawer Unit", sku: "SKU-006789", category: "Office", availableStock: 89, threshold: 30, status: "in-stock", location: "E-09-2", lastUpdated: "2024-01-15" },
-  { id: "7", name: "HEMNES Dresser, Gray", sku: "SKU-007890", category: "Bedroom", availableStock: 34, threshold: 25, status: "in-stock", location: "B-11-3", lastUpdated: "2024-01-14" },
-  { id: "8", name: "BESTA TV Unit, Black", sku: "SKU-008901", category: "Living Room", availableStock: 5, threshold: 40, status: "low-stock", location: "C-07-1", lastUpdated: "2024-01-13" },
-  { id: "9", name: "IVAR Shelving Unit", sku: "SKU-009012", category: "Storage", availableStock: 67, threshold: 50, status: "in-stock", location: "A-18-2", lastUpdated: "2024-01-15" },
-  { id: "10", name: "SÖDERHAMN Sofa, Beige", sku: "SKU-010123", category: "Living Room", availableStock: 23, threshold: 20, status: "in-stock", location: "D-05-1", lastUpdated: "2024-01-11" },
-];
 
 const statusStyles = {
   "in-stock": "bg-success/10 text-success border-success/20",
@@ -60,12 +59,64 @@ const statusLabels = {
 };
 
 export default function InventoryList() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
 
+  const [open, setOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    sku: "",
+    category: "",
+    store_id: 1, // Default store
+    quantity: 0,
+    threshold: 10
+  });
+
+  const handleCreate = async () => {
+    try {
+      if (!newProduct.name || !newProduct.sku) {
+        toast.error("Name and SKU are required");
+        return;
+      }
+      await createProduct(newProduct);
+      toast.success("Product created successfully");
+      setOpen(false);
+      // Refresh inventory
+      const data = await getInventory();
+      setProducts(data);
+      // Reset form
+      setNewProduct({
+        name: "",
+        sku: "",
+        category: "",
+        store_id: 1,
+        quantity: 0,
+        threshold: 10
+      });
+    } catch (error) {
+      toast.error("Failed to create product");
+    }
+  };
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const data = await getInventory();
+        setProducts(data);
+      } catch (error) {
+        console.error("Failed to fetch inventory:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
+
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = product.product_name.toLowerCase().includes(search.toLowerCase()) ||
       product.sku.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = category === "all" || product.category === category;
     const matchesStatus = status === "all" || product.status === status;
@@ -112,10 +163,84 @@ export default function InventoryList() {
                   <IconDownload className="mr-2 h-4 w-4" />
                   Export
                 </Button>
-                <Button size="sm">
-                  <IconPlus className="mr-2 h-4 w-4" />
-                  Add Product
-                </Button>
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <IconPlus className="mr-2 h-4 w-4" />
+                      Add Product
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add New Product</DialogTitle>
+                      <DialogDescription>
+                        Add a new product to the inventory.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                          Name
+                        </Label>
+                        <Input
+                          id="name"
+                          value={newProduct.name}
+                          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="sku" className="text-right">
+                          SKU
+                        </Label>
+                        <Input
+                          id="sku"
+                          value={newProduct.sku}
+                          onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="category" className="text-right">
+                          Category
+                        </Label>
+                        <Input
+                          id="category"
+                          value={newProduct.category}
+                          onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="quantity" className="text-right">
+                          Quantity
+                        </Label>
+                        <Input
+                          id="quantity"
+                          type="number"
+                          value={newProduct.quantity}
+                          onChange={(e) => setNewProduct({ ...newProduct, quantity: parseInt(e.target.value) })}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="threshold" className="text-right">
+                          Threshold
+                        </Label>
+                        <Input
+                          id="threshold"
+                          type="number"
+                          value={newProduct.threshold}
+                          onChange={(e) => setNewProduct({ ...newProduct, threshold: parseInt(e.target.value) })}
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" onClick={handleCreate}>Save changes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </CardHeader>
@@ -175,7 +300,7 @@ export default function InventoryList() {
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                             <IconPackage className="h-5 w-5 text-muted-foreground" />
                           </div>
-                          <span className="font-medium">{product.name}</span>
+                          <span className="font-medium">{product.product_name}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{product.sku}</TableCell>
@@ -188,8 +313,8 @@ export default function InventoryList() {
                             <span className="text-sm font-medium">{product.availableStock}</span>
                             <span className="text-xs text-muted-foreground">/ {product.threshold}</span>
                           </div>
-                          <Progress 
-                            value={Math.min((product.availableStock / product.threshold) * 100, 100)} 
+                          <Progress
+                            value={Math.min((product.availableStock / product.threshold) * 100, 100)}
                             className="h-2"
                           />
                         </div>

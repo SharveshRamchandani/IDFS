@@ -5,3 +5,5 @@ from .crud_user import create, authenticate, get_by_email, get_password_hash
 
 from . import crud_user
 from . import crud_sales
+from . import crud_holiday
+from . import crud_supply_chain

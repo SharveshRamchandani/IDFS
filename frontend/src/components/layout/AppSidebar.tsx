@@ -1,4 +1,6 @@
-import { useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getMe } from "@/lib/api";
 import {
   IconBox,
   IconChartBar,
@@ -75,11 +77,32 @@ const adminItems = [
   { title: "Threshold Rules", url: "/admin/thresholds", icon: IconAdjustments },
 ];
 
+interface User {
+  full_name: string;
+  email: string;
+  role: string;
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    getMe().then((data) => {
+      if (data) {
+        setUser(data);
+      }
+    }).catch(err => console.error("Failed to fetch user:", err));
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("access_token");
+    navigate("/login");
+  };
 
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(path + "/");
 
@@ -206,14 +229,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="/avatars/user.jpg" alt="User" />
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      JD
+                      {user ? user.full_name.charAt(0).toUpperCase() : "G"}
                     </AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <>
                       <div className="flex flex-col gap-0.5 leading-none text-left">
-                        <span className="font-medium text-sm">John Doe</span>
-                        <span className="text-xs text-muted-foreground">Store Manager</span>
+                        <span className="font-medium text-sm truncate">{user?.full_name || "Guest"}</span>
+                        <span className="text-xs text-muted-foreground truncate capitalize">{user?.role || "Visitor"}</span>
                       </div>
                       <IconChevronUp className="ml-auto h-4 w-4" />
                     </>
@@ -225,22 +248,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 align="end"
                 side="top"
               >
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>My Account ({user?.email})</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
                   <IconUserCircle className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/notifications")}>
                   <IconBell className="mr-2 h-4 w-4" />
                   Notifications
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/settings")}>
                   <IconSettings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleSignOut}>
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
