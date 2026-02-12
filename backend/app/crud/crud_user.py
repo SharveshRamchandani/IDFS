@@ -55,3 +55,9 @@ def update(
     db.commit()
     db.refresh(db_obj)
     return db_obj
+
+def remove(db: Session, *, id: int) -> User:
+    obj = db.query(User).get(id)
+    db.delete(obj)
+    db.commit()
+    return obj

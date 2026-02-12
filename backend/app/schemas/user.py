@@ -6,7 +6,7 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     full_name: Optional[str] = None
-    role: Optional[str] = "analyst"
+    role: Optional[str] = "inventory_analyst"
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)

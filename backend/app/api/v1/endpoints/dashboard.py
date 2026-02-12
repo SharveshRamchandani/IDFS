@@ -65,18 +65,35 @@ def read_dashboard(
         print(f"Error fetching top stores: {e}")
         top_stores = []
 
-        return {
-            "summary": {
-                "total_products": total_products,
-                "total_stores": total_stores,
-                "total_sales_records": total_sales
-            },
-            "total_revenue": revenue,
-            "total_quantity": total_qty,
-            "avg_daily_sales": avg_daily,
-            "recent_sales": recent_sales,
-            "top_stores": top_stores
-        }
+    return {
+        "summary": {
+            "total_products": total_products,
+            "total_stores": total_stores,
+            "total_sales_records": total_sales
+        },
+        "total_revenue": revenue,
+        "total_quantity": total_qty,
+        "avg_daily_sales": avg_daily,
+        "recent_sales": recent_sales,
+        "top_stores": top_stores
+    }
+
+@router.get("/trend")
+def get_daily_trend(
+    days: int = 30,
+    db: Session = Depends(deps.get_db)
+):
+    """
+    Get daily aggregated sales trend.
+    """
+    try:
+        data = crud_sales.get_daily_sales_trend(db, days=days)
+        # SQLAlchemy returns Row(date, quantity)
+        result = [
+            {"date": row.date, "quantity": row.quantity}
+            for row in data
+        ]
+        return result
     except Exception as e:
-        print(f"Error fetching dashboard stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error fetching trend: {e}")
+        return []

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { IconTrendingUp, IconCalendar, IconTarget, IconDownload } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -11,47 +11,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Area, 
-  AreaChart, 
-  CartesianGrid, 
-  XAxis, 
-  YAxis, 
-  ResponsiveContainer, 
-  Tooltip, 
+import {
+  Area,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
   Legend,
   Line,
   ComposedChart,
-  Bar
+  CartesianGrid
 } from "recharts";
-
-const forecastData = [
-  { month: "Jan", actual: 4500, forecast: 4200, lower: 3800, upper: 4600 },
-  { month: "Feb", actual: 5200, forecast: 5000, lower: 4600, upper: 5400 },
-  { month: "Mar", actual: 4800, forecast: 4600, lower: 4200, upper: 5000 },
-  { month: "Apr", actual: 5800, forecast: 5500, lower: 5100, upper: 5900 },
-  { month: "May", actual: 6200, forecast: 6000, lower: 5600, upper: 6400 },
-  { month: "Jun", actual: 5900, forecast: 5700, lower: 5300, upper: 6100 },
-  { month: "Jul", actual: null, forecast: 6800, lower: 6200, upper: 7400 },
-  { month: "Aug", actual: null, forecast: 7200, lower: 6600, upper: 7800 },
-  { month: "Sep", actual: null, forecast: 6500, lower: 5900, upper: 7100 },
-  { month: "Oct", actual: null, forecast: 8100, lower: 7400, upper: 8800 },
-  { month: "Nov", actual: null, forecast: 9500, lower: 8700, upper: 10300 },
-  { month: "Dec", actual: null, forecast: 11200, lower: 10200, upper: 12200 },
-];
-
-const categoryForecast = [
-  { category: "Storage", current: 12500, predicted: 14200, growth: 13.6 },
-  { category: "Bedroom", current: 9800, predicted: 10500, growth: 7.1 },
-  { category: "Living Room", current: 8200, predicted: 9100, growth: 11.0 },
-  { category: "Office", current: 6500, predicted: 8200, growth: 26.2 },
-  { category: "Dining", current: 4300, predicted: 4100, growth: -4.7 },
-  { category: "Kitchen", current: 5600, predicted: 5900, growth: 5.4 },
-];
+import { useQuery } from "@tanstack/react-query";
+import { forecastingApi } from "@/lib/forecastingApi";
+import { getGlobalForecast } from "@/lib/api";
 
 export default function DemandForecast() {
-  const [timeframe, setTimeframe] = useState("12m");
-  const [category, setCategory] = useState("all");
+  const [timeframe, setTimeframe] = useState("30");
+  const [showHistory, setShowHistory] = useState(true);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['global-forecast', timeframe, showHistory],
+    queryFn: () => getGlobalForecast(parseInt(timeframe), false, showHistory)
+  });
+
+  const forecastData = data?.forecast || [];
+
+  // Filter for chart: If showing history, we might want to limit how far back 
+  // or just show all. Let's show last 90 days of history + forecast.
+  const chartData = showHistory
+    ? forecastData.slice(- (parseInt(timeframe) + 90))
+    : forecastData;
+
+  const totalDemand = forecastData
+    .filter((item: any) => new Date(item.ds) > new Date()) // Only sum future
+    .reduce((sum: any, item: any) => sum + (item.yhat || 0), 0);
 
   return (
     <DashboardLayout title="Demand Forecast">
@@ -60,28 +54,33 @@ export default function DemandForecast() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">ML-Powered Demand Predictions</h2>
-            <p className="text-sm text-muted-foreground">Forecast based on historical sales, seasonal patterns, and market trends</p>
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? "Loading predictions..." : "Using Facebook Prophet model"}
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="storage">Storage</SelectItem>
-                <SelectItem value="bedroom">Bedroom</SelectItem>
-                <SelectItem value="living">Living Room</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex gap-2 items-center">
+            <div className="flex items-center space-x-2 mr-4">
+              <Checkbox
+                id="history"
+                checked={showHistory}
+                onCheckedChange={(checked) => setShowHistory(checked === true)}
+              />
+              <label
+                htmlFor="history"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Show Historical Actuals
+              </label>
+            </div>
+
             <Select value={timeframe} onValueChange={setTimeframe}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="3m">Next 3 months</SelectItem>
-                <SelectItem value="6m">Next 6 months</SelectItem>
-                <SelectItem value="12m">Next 12 months</SelectItem>
+                <SelectItem value="30">Next 30 days</SelectItem>
+                <SelectItem value="60">Next 60 days</SelectItem>
+                <SelectItem value="90">Next 90 days</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline">
@@ -99,28 +98,31 @@ export default function DemandForecast() {
               <IconTrendingUp className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$89,500</div>
-              <p className="text-xs text-muted-foreground mt-1">Next 6 months</p>
+              <div className="text-2xl font-bold">{Math.round(totalDemand).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">Next {timeframe} days</p>
             </CardContent>
           </Card>
+
+          {/* Placeholder for confidence - difficult to get single number without evaluation */}
           <Card className="bg-gradient-to-t from-success/5 to-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Model Confidence</CardDescription>
+              <CardDescription>Model Status</CardDescription>
               <IconTarget className="h-5 w-5 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">94.2%</div>
-              <p className="text-xs text-muted-foreground mt-1">Based on MAPE score</p>
+              <div className="text-2xl font-bold">{data ? "Active" : "Loading..."}</div>
+              <p className="text-xs text-muted-foreground mt-1">{data?.method || "Prophet"}</p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Peak Demand Period</CardDescription>
+              <CardDescription>Forecast Horizon</CardDescription>
               <IconCalendar className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Nov - Dec</div>
-              <p className="text-xs text-muted-foreground mt-1">Holiday season surge</p>
+              <div className="text-2xl font-bold">{timeframe} Days</div>
+              <p className="text-xs text-muted-foreground mt-1">Future projection</p>
             </CardContent>
           </Card>
         </div>
@@ -129,111 +131,69 @@ export default function DemandForecast() {
         <Card>
           <CardHeader>
             <CardTitle>Demand Forecast with Confidence Intervals</CardTitle>
-            <CardDescription>Actual sales vs. predicted demand with upper/lower bounds</CardDescription>
+            <CardDescription>Predicted demand vs Actual History</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={forecastData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorConfidenceBand" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${value / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number | null) => value ? [value.toLocaleString(), ""] : ["-", ""]}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="upper"
-                    stroke="transparent"
-                    fill="url(#colorConfidenceBand)"
-                    name="Upper Bound"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="lower"
-                    stroke="transparent"
-                    fill="hsl(var(--background))"
-                    name="Lower Bound"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="forecast"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={{ fill: "hsl(var(--primary))", r: 3 }}
-                    name="Forecast"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="hsl(var(--chart-2))"
-                    strokeWidth={3}
-                    dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
-                    name="Actual"
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Category Forecast */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Category-wise Forecast</CardTitle>
-            <CardDescription>Predicted demand growth by product category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {categoryForecast.map((cat) => (
-                <div key={cat.category} className="flex items-center gap-4 p-4 rounded-lg border">
-                  <div className="w-28 font-medium">{cat.category}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">Current: {cat.current.toLocaleString()}</span>
-                      <span className="text-sm font-medium">Predicted: {cat.predicted.toLocaleString()}</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
-                      <div 
-                        className="h-2 rounded-full bg-primary"
-                        style={{ width: `${Math.min((cat.predicted / 15000) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <Badge 
-                    variant="outline" 
-                    className={cat.growth >= 0 ? "text-success border-success/30" : "text-destructive border-destructive/30"}
-                  >
-                    {cat.growth >= 0 ? "+" : ""}{cat.growth}%
-                  </Badge>
-                </div>
-              ))}
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center">Loading Data...</div>
+              ) : error ? (
+                <div className="flex h-full items-center justify-center text-red-500">Failed to load forecast data</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorConfidenceBand" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="ds"
+                      tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      minTickGap={30}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(d) => new Date(d).toLocaleDateString()}
+                      formatter={(value: number, name: string) => [Math.round(value), name === "y" ? "Actual Sales" : name]}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="yhat_upper"
+                      stroke="transparent"
+                      fill="url(#colorConfidenceBand)"
+                      name="Upper Bound"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="yhat_lower"
+                      stroke="transparent"
+                      fill="hsl(var(--background))"
+                      name="Lower Bound"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="y"
+                      stroke="#10b981" // Green for actual
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      name="Actual Sales"
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="yhat"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Forecast"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

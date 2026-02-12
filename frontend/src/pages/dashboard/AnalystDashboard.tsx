@@ -1,7 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconTrendingUp, IconTrendingDown, IconChartBar, IconCalendar, IconTarget, IconRefresh } from "@tabler/icons-react";
+import { IconRefresh } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -23,17 +22,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import { getGlobalForecast, getTrainingStatus, triggerTraining, getDashboardStats } from "@/lib/api";
+import { getGlobalForecast, getTrainingStatus, triggerTraining } from "@/lib/api";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 export default function AnalystDashboard() {
   const [timeRange, setTimeRange] = useState("30"); // days
   const [chartData, setChartData] = useState([]);
   const [trainingStatus, setTrainingStatus] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Poll Training Status + Stats
+  // Poll Training Status
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -44,9 +43,6 @@ export default function AnalystDashboard() {
       }
     };
     checkStatus();
-
-    // Initial Stats Load
-    getDashboardStats().then(setStats).catch(console.error);
 
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
@@ -60,18 +56,21 @@ export default function AnalystDashboard() {
         const data = await getGlobalForecast(parseInt(timeRange), true); // Get detailed
 
         // Transform for Recharts
-        // Backend returns: [{ds: '2022-01-01', yhat: 100, yhat_lower: 90, ...}]
-
-        const transformed = data.forecast.map((item: any) => ({
-          date: new Date(item.ds).toLocaleDateString(),
-          forecast: Math.round(item.yhat),
-          lower: Math.round(item.yhat_lower),
-          upper: Math.round(item.yhat_upper),
-          actual: null // We don't have actuals for future dates yet in this API response, unless we change backend
-        }));
-
-        setChartData(transformed);
-        setError(null);
+        // Backend returns: {{ forecast: [{ds: ..., yhat: ...}] }}
+        if (data && data.forecast) {
+          const transformed = data.forecast.map((item: any) => ({
+            date: new Date(item.ds).toLocaleDateString(),
+            forecast: Math.round(item.yhat || 0),
+            lower: Math.round(item.yhat_lower || 0),
+            upper: Math.round(item.yhat_upper || 0),
+            actual: null
+          }));
+          setChartData(transformed);
+          setError(null);
+        } else {
+          // Fallback if structure mismatches
+          setChartData([]);
+        }
       } catch (err: any) {
         console.error(err);
         setError("Failed to load forecast data. Model might not be trained.");
@@ -91,14 +90,6 @@ export default function AnalystDashboard() {
     }
   }
 
-  // Dynamic KPI Data
-  const kpiData = [
-    { title: "Total Revenue", value: stats ? `$${(stats.total_revenue / 1000).toFixed(1)}k` : "...", trend: 0, icon: IconTarget, description: "All time" },
-    { title: "Avg Daily Sales", value: stats ? Math.round(stats.avg_daily_sales) : "...", trend: 0, icon: IconTrendingUp, description: "Units per day" },
-    { title: "Total Units", value: stats ? stats.total_quantity.toLocaleString() : "...", trend: 0, icon: IconChartBar, description: "Sold" },
-    { title: "Active Stores", value: stats ? stats.top_stores?.length || 0 : "...", trend: 0, icon: IconCalendar, description: "Reporting" },
-  ];
-
   return (
     <DashboardLayout title="Inventory Analyst Dashboard">
       <div className="space-y-6">
@@ -117,8 +108,8 @@ export default function AnalystDashboard() {
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Demand Forecast</h2>
-            <p className="text-muted-foreground">AI-driven predictions using Prophet</p>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Demand Forecast</h2>
+            <p className="text-gray-600 font-medium">AI-driven predictions using Prophet</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" onClick={handleRetrain} disabled={trainingStatus?.is_training}>
@@ -128,31 +119,15 @@ export default function AnalystDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpiData.map((kpi) => (
-            <Card key={kpi.title} className="bg-gradient-to-t from-primary/5 to-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">{kpi.title}</CardDescription>
-                <kpi.icon className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <div className="text-2xl font-bold">{kpi.value}</div>
-                    <p className="text-xs text-muted-foreground mt-1">{kpi.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DashboardStats />
+
 
         {/* Forecast Chart */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Global Sales Forecast</CardTitle>
-              <CardDescription>Predicted sales for next {timeRange} days</CardDescription>
+              <CardTitle className="text-gray-900 font-bold">Global Sales Forecast</CardTitle>
+              <CardDescription className="text-gray-600 font-medium">Predicted sales for next {timeRange} days</CardDescription>
             </div>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-32">

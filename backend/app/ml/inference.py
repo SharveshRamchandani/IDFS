@@ -8,7 +8,7 @@ def load_model():
     """
     return forecaster.load_model()
 
-def predict_demand(days: int = 30, future_promotions: Optional[List[int]] = None) -> List[Dict]:
+def predict_demand(days: int = 30, future_promotions: Optional[List[int]] = None, include_history: bool = False) -> List[Dict]:
     """
     Generate sales forecasts using the trained singleton model.
     """
@@ -16,7 +16,7 @@ def predict_demand(days: int = 30, future_promotions: Optional[List[int]] = None
         if not load_model():
             return {"error": "Model not trained or found"}
             
-    return forecaster.predict(days=days, future_promotions=future_promotions)
+    return forecaster.predict(days=days, include_history=include_history, future_promotions=future_promotions)
     
 def get_components(days: int = 30) -> Dict:
     """

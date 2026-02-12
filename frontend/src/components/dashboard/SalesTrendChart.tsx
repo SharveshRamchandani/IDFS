@@ -8,23 +8,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
-import { getGlobalForecast } from "@/lib/api";
+import { getGlobalForecast, getSalesTrend } from "@/lib/api";
 
 export function SalesTrendChart() {
   const [period, setPeriod] = useState("30");
   const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
-    getGlobalForecast(parseInt(period), false).then((res) => {
-      // Transform API response to chart data
-      // API returns { dates: [], yhat: [], yhat_lower: [], yhat_upper: [] }
-      // We need array of objects
-      const chartData = res.dates.map((date: string, index: number) => ({
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        forecast: Math.round(res.yhat[index]),
-        sales: index < 10 ? Math.round(res.yhat[index] * (0.9 + Math.random() * 0.2)) : null // Mock actual sales for past days
-      }));
-      setData(chartData);
+    Promise.all([
+      getGlobalForecast(parseInt(period), false),
+      getSalesTrend(parseInt(period))
+    ]).then(([forecastRes, salesRes]) => {
+
+      const historyData = Array.isArray(salesRes) ? salesRes.map((item: any) => ({
+        date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        sales: item.quantity,
+        forecast: null,
+        timestamp: new Date(item.date).getTime()
+      })) : [];
+
+      const forecastData = (forecastRes && forecastRes.forecast) ? forecastRes.forecast.map((item: any) => ({
+        date: new Date(item.ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        sales: null,
+        forecast: Math.round(item.yhat || 0),
+        timestamp: new Date(item.ds).getTime()
+      })) : [];
+
+      // Combine and sort by date
+      const combined = [...historyData, ...forecastData].sort((a, b) => a.timestamp - b.timestamp);
+
+      // Remove duplicates if any (Prophet might return history)
+      // For now, naive merge is fine as long as ranges don't overlap strangely
+
+      setData(combined);
     }).catch(console.error);
   }, [period]);
 

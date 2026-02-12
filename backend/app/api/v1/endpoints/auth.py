@@ -51,8 +51,8 @@ def create_user_signup(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
-    # Force role to be analyst and not superuser for public signups
-    user_in.role = "analyst"
+    # Force role to be inventory_analyst and not superuser for public signups
+    user_in.role = "inventory_analyst"
     user_in.is_superuser = False
     user = crud.crud_user.create(db, obj_in=user_in)
     return user

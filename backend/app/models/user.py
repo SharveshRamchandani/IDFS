@@ -4,9 +4,10 @@ import enum
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
-    ANALYST = "analyst"
-    MANAGER = "manager"
-    WAREHOUSE = "warehouse"
+    STORE_MANAGER = "store_manager"
+    INVENTORY_ANALYST = "inventory_analyst"
+    STAFF = "staff"
+    USER = "user"
 
 class User(Base):
     id = Column(Integer, primary_key=True, index=True)
@@ -15,4 +16,4 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean(), default=True)
     is_superuser = Column(Boolean(), default=False)
-    role = Column(String, default=UserRole.ANALYST)
+    role = Column(String, default=UserRole.USER)

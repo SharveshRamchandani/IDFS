@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IconUsers, IconShieldLock, IconPlus } from "@tabler/icons-react";
+import { IconUsers, IconTrash, IconPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { getUsers, updateUserRole, createUser } from "@/lib/api";
+import { getUsers, updateUserRole, createUser, deleteUser } from "@/lib/api";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -59,6 +59,19 @@ export default function AdminUsers() {
             toast.error("Failed to update role");
         }
     };
+
+    const handleDelete = async (userId: number) => {
+        if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+
+        try {
+            await deleteUser(userId);
+            toast.success("User deleted successfully");
+            fetchUsers();
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to delete user");
+        }
+    }
 
     const handleCreate = async () => {
         if (!newUser.email || !newUser.password) {
@@ -191,8 +204,13 @@ export default function AdminUsers() {
                                             </Select>
                                         </TableCell>
                                         <TableCell>
-                                            <Button variant="ghost" size="sm">
-                                                <IconShieldLock className="h-4 w-4" />
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleDelete(user.id)}
+                                                className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                            >
+                                                <IconTrash className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
                                     </TableRow>

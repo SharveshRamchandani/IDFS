@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getInventory, createProduct } from "@/lib/api";
+import { getInventory, createProduct, deleteProduct } from "@/lib/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconSearch, IconDownload, IconPlus, IconPackage } from "@tabler/icons-react";
+import { IconSearch, IconDownload, IconPlus, IconPackage, IconTrash } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +98,19 @@ export default function InventoryList() {
       });
     } catch (error) {
       toast.error("Failed to create product");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      await deleteProduct(id);
+      toast.success("Product deleted successfully");
+      const data = await getInventory();
+      setProducts(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete product");
     }
   };
 
@@ -290,6 +303,7 @@ export default function InventoryList() {
                     <TableHead>Status</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Last Updated</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -326,6 +340,19 @@ export default function InventoryList() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{product.location}</TableCell>
                       <TableCell className="text-muted-foreground">{product.lastUpdated}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(product.id);
+                          }}
+                          className="text-destructive hover:bg-destructive/10"
+                        >
+                          <IconTrash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -26,7 +26,7 @@ def login_google(
     3. If not, create user (default role: ANALYST)
     4. Issue our own JWT access token
     """
-    print(f"🔹 Received Google Token: {credential[:20]}...")
+    print(f"[>] Received Google Token: {credential[:20]}...")
     try:
         # Verify the token with Google
         id_info = id_token.verify_oauth2_token(
@@ -34,18 +34,18 @@ def login_google(
             requests.Request(), 
             settings.GOOGLE_CLIENT_ID
         )
-        print(f"✅ Token Verified. User: {id_info.get('email')}")
+        print(f"[+] Token Verified. User: {id_info.get('email')}")
         
         email = id_info.get("email")
         if not email:
-            print("❌ Token missing email")
+            print("[!] Token missing email")
             raise HTTPException(status_code=400, detail="Google token missing email")
             
         # Check if user exists
         user = crud.crud_user.get_by_email(db, email=email)
         
         if not user:
-            print("🆕 User not found, creating new account...")
+            print("[+] User not found, creating new account...")
             # Auto-register new user
             import secrets
             random_password = secrets.token_urlsafe(32)
@@ -54,13 +54,13 @@ def login_google(
                 email=email,
                 full_name=id_info.get("name"),
                 password=random_password,
-                role="analyst" # Default role
+                role="inventory_analyst" # Default role
             )
             user = crud.crud_user.create(db, obj_in=user_in)
-            print(f"✅ User created with ID: {user.id}")
+            print(f"[+] User created with ID: {user.id}")
             
         if not user.is_active:
-             print("❌ Inactive user")
+             print("[!] Inactive user")
              raise HTTPException(status_code=400, detail="Inactive user")
 
         # Create our access token
@@ -68,15 +68,15 @@ def login_google(
         token = security.create_access_token(
                 user.id, expires_delta=access_token_expires
             )
-        print("✅ Access Token Generated")
+        print("[+] Access Token Generated")
         return {
             "access_token": token,
             "token_type": "bearer",
         }
         
     except ValueError as e:
-        print(f"❌ Invalid Token Error: {e}")
+        print(f"[!] Invalid Token Error: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid Google Token: {str(e)}")
     except Exception as e:
-        print(f"❌ Google Login Exception: {e}")
+        print(f"[!] Google Login Exception: {e}")
         raise HTTPException(status_code=400, detail=f"Google Login Failed: {str(e)}")

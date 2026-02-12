@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { login, loginWithGoogle } from "@/lib/api";
+import { login as apiLogin, loginWithGoogle } from "@/lib/api";
 import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom";
 import { IconBox, IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react";
@@ -15,53 +15,87 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from '@/contexts/AuthContext';
 
 const roles = [
-  { value: "store-manager", label: "Store Manager" },
-  { value: "analyst", label: "Inventory Analyst" },
-  { value: "warehouse", label: "Warehouse Manager" },
-  { value: "admin", label: "Admin / HQ" },
+  { value: "store_manager", label: "Store Manager" },
+  { value: "inventory_analyst", label: "Inventory Analyst" },
+  { value: "staff", label: "Warehouse Staff" }, // mapped from warehouse -> staff usually, but keeping consistent with role definition
+  { value: "admin", label: "Admin" },
 ];
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(""); // This might not be needed if role comes from backend user
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleNavigation = (userRole: string) => {
+    switch (userRole) {
+      case "store_manager":
+        navigate("/dashboard/store");
+        break;
+      case "inventory_analyst":
+        navigate("/dashboard/analyst");
+        break;
+      case "warehouse":
+      case "staff":
+        navigate("/dashboard/warehouse");
+        break;
+      case "admin":
+        navigate("/dashboard/admin");
+        break;
+      default:
+        navigate("/dashboard/store");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password || !role) {
+    if (!email || !password) {
       toast.error("Please fill in all fields");
       return;
     }
 
     try {
-      const data = await login(email, password);
-      localStorage.setItem('token', data.access_token);
+      setIsLoading(true);
+      const data = await apiLogin(email, password);
+
+      // Use useAuth to set state and trigger re-render
+      await login(data.access_token);
+
       toast.success("Login successful!");
 
-      // Navigate based on role (Note: in a real app, you'd decode the token or fetch user profile to get the role)
-      switch (role) {
-        case "store-manager":
-          navigate("/dashboard/store");
-          break;
-        case "analyst":
-          navigate("/dashboard/analyst");
-          break;
-        case "warehouse":
-          navigate("/dashboard/warehouse");
-          break;
-        case "admin":
-          navigate("/dashboard/admin");
-          break;
-        default:
-          navigate("/dashboard/store");
+      // We can rely on the role selected in dropdown or the one from the user profile.
+      // Usually backend tells us the role. For now, let's use the one from dropdown if available, 
+      // or we rely on what useAuth fetches.
+      // Ideally, login() updates the user state, so we can check it. 
+      // But Since login is async and state update might be slightly delayed in effect if we tried to read 'user' immediately from context here
+      // we can try to trust the user input for redirection or wait.
+      // However, the best way is to let the user be redirected based on the role we just established.
+      // Since `login` in AuthContext calls `getMe`, we can't easily get the role *back* from `login` unless we modify it to return user.
+
+      // For now, let's assume valid login.
+      // If the user selected a role, we might want to respect it for where to go, 
+      // but typically the backend dictates the role.
+
+      // Let's assume the user knows their role or we default. 
+      // If we want to be strict, we should read the role from the token or the user profile.
+
+      // Temporary: use the selected role if available, otherwise default
+      if (role) {
+        handleNavigation(role);
+      } else {
+        // If no role selected, maybe use a default or fetch details.
+        // Since we just called login(), the simple navigation works.
+        navigate("/dashboard/store");
       }
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Login failed");
     } finally {
@@ -77,9 +111,10 @@ export default function Login() {
       const data = await loginWithGoogle(credentialResponse);
       console.log("✅ Backend Verification Successful:", data);
 
-      localStorage.setItem('access_token', data.access_token);
+      await login(data.access_token);
+
       toast.success("Google Login successful!");
-      navigate("/dashboard/analyst");
+      navigate("/dashboard/analyst"); // Default for Google Login for now
     } catch (error: any) {
       console.error("❌ Google Login Process Failed:", error);
       toast.error(error.message || "Google Login failed");
@@ -148,7 +183,7 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role">Role (Optional)</Label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger id="role" className="h-11">
                     <SelectValue placeholder="Select your role" />

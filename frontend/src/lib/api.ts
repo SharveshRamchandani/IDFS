@@ -53,9 +53,9 @@ export async function signup(userData) {
 }
 
 
-export async function getGlobalForecast(days = 30, detailed = false) {
+export async function getGlobalForecast(days = 30, detailed = false, includeHistory = false) {
     const token = localStorage.getItem('access_token');
-    const response = await fetch(`${API_URL}/forecasting/global?days=${days}&detailed=${detailed}`, {
+    const response = await fetch(`${API_URL}/forecasting/global?days=${days}&detailed=${detailed}&include_history=${includeHistory}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -97,14 +97,28 @@ export async function getTrainingStatus() {
 
 export async function getDashboardStats() {
     const token = localStorage.getItem('access_token');
+    console.log("📡 Calling dashboard API with token:", token ? "✓ Present" : "✗ Missing");
+
     const response = await fetch(`${API_URL}/dashboard/`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
 
+    console.log("📥 Dashboard API response:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+    });
+
     if (!response.ok) {
-        throw new Error('Failed to get dashboard stats');
+        const errorText = await response.text();
+        console.error("❌ Dashboard API error:", errorText);
+        throw new Error(`Failed to get dashboard stats: ${response.status} ${errorText}`);
     }
-    return response.json();
+
+    const data = await response.json();
+    console.log("📊 Dashboard API returned data:", data);
+    return data;
 }
 
 export async function uploadSalesData(file: File) {
@@ -129,6 +143,15 @@ export async function uploadSalesData(file: File) {
     return response.json();
 }
 
+export async function getSalesTrend(days = 30) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/dashboard/trend?days=${days}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) return [];
+    return response.json();
+}
+
 // User & Admin API
 export async function getUsers() {
     const token = localStorage.getItem('access_token');
@@ -136,6 +159,16 @@ export async function getUsers() {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) throw new Error('Failed to get users');
+    return response.json();
+}
+
+export async function deleteUser(userId: number) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to delete user');
     return response.json();
 }
 
@@ -264,5 +297,53 @@ export async function createOrder(orderData: any) {
         body: JSON.stringify(orderData)
     });
     if (!response.ok) throw new Error('Failed to create order');
+    return response.json();
+}
+
+export async function updateProduct(id: number, updates: any) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/inventory/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error('Failed to update product');
+    return response.json();
+}
+
+export async function deleteProduct(id: number) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/inventory/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to delete product');
+    return response.json();
+}
+
+export async function getDeadStock() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/inventory/dead-stock`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to get dead stock');
+    return response.json();
+}
+
+export async function updateMe(updates: any) {
+    const token = localStorage.getItem('access_token');
+    const params = new URLSearchParams();
+    if (updates.full_name) params.append('full_name', updates.full_name);
+    if (updates.email) params.append('email', updates.email);
+    if (updates.password) params.append('password', updates.password);
+
+    const response = await fetch(`${API_URL}/users/me?${params.toString()}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to update profile');
     return response.json();
 }

@@ -36,7 +36,8 @@ class ForecastModel:
             'yearly_seasonality': yearly_seasonality
         }
         self.country_holidays = country_holidays
-        self.last_metrics = None
+        self.metrics_path = model_path.replace('.joblib', '_metrics.json')
+        self.last_metrics = self._load_metrics()
 
     def train(self, df=None, csv_path="data/train.csv", auto_tune=False, holidays_df=None):
         """
@@ -46,30 +47,30 @@ class ForecastModel:
         """
         if df is None:
             if os.path.exists(csv_path):
-                print(f"📂 Found CSV file. Loading data from {csv_path}...")
+                print(f"(folder) Found CSV file. Loading data from {csv_path}...")
                 try:
                     df = pd.read_csv(csv_path)
                 except Exception as e:
-                    print(f"❌ Error reading CSV: {e}")
+                    print(f"(x) Error reading CSV: {e}")
                     return
             else:
-                print(f"⚠️ File not found at {csv_path}. Generating synthetic training data...")
+                print(f"(!) File not found at {csv_path}. Generating synthetic training data...")
                 df = self._generate_dummy_data()
 
-        print(f"🔄 Preparing {len(df)} records for training...")
+        print(f"(refresh) Preparing {len(df)} records for training...")
         
         # Use centralized preprocessing
         train_df = prepare_for_training(df)
         
         if train_df.empty or 'y' not in train_df.columns or 'ds' not in train_df.columns:
-            print("❌ Preprocessing failed or missing required columns ('ds', 'y').")
+            print("(x) Preprocessing failed or missing required columns ('ds', 'y').")
             return
 
         # Auto-Tune if requested
         if auto_tune:
-            print("🧠 Auto-Tuning enabled. This may take a while...")
+            print("(brain) Auto-Tuning enabled. This may take a while...")
             self.optimize_hyperparameters(df)
-            print(f"🧠 Optimization done. using params: {self.params}")
+            print(f"(brain) Optimization done. using params: {self.params}")
 
         # Initialize Prophet with tuned parameters
         # Pass holidays if available
@@ -82,39 +83,47 @@ class ForecastModel:
             try:
                 self.model.add_country_holidays(country_name=self.country_holidays)
             except Exception as e:
-                print(f"⚠️ Could not add holidays for {self.country_holidays}: {e}")
+                print(f"(!) Could not add holidays for {self.country_holidays}: {e}")
 
         if 'onpromotion' in train_df.columns:
             self.model.add_regressor('onpromotion')
 
-        print("🚀 Fitting Prophet model...")
+        print("(rocket) Fitting Prophet model...")
         self.model.fit(train_df)
         self.is_trained = True
         
         self.save_model()
-        print("✅ Model trained and saved successfully.")
+        print("(tick) Model trained and saved successfully.")
 
     def evaluate(self, initial='365 days', period='30 days', horizon='30 days'):
         """
         Perform cross-validation to evaluate model performance (RMSE, MAE).
         """
         if not self.is_trained:
-            print("⚠️ Model not trained. Cannot evaluate.")
+            print("(!) Model not trained. Cannot evaluate.")
             return None
 
-        print("📊 Starting Cross-Validation...")
+        print("(chart) Starting Cross-Validation...")
         try:
             df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon)
             df_p = performance_metrics(df_cv)
             
-            # Save metrics
-            metrics = df_p.mean().to_dict()
-            self.last_metrics = metrics
+            # Save metrics (select numeric only)
+            numeric_cols = ['mse', 'rmse', 'mae', 'mape', 'mdape', 'smape', 'coverage']
+            # Intersect with available columns because coverage might be missing
+            valid_cols = [c for c in numeric_cols if c in df_p.columns]
             
-            print(f"✅ Evaluation Complete. RMSE: {metrics.get('rmse', 'N/A'):.2f}, MAE: {metrics.get('mae', 'N/A'):.2f}")
+            metrics = df_p[valid_cols].mean().to_dict()
+            # Convert numpy types to python native for JSON
+            metrics = {k: float(v) for k, v in metrics.items()}
+            
+            self.last_metrics = metrics
+            self._save_metrics()
+            
+            print(f"(tick) Evaluation Complete. RMSE: {metrics.get('rmse', 'N/A'):.2f}, MAE: {metrics.get('mae', 'N/A'):.2f}")
             return metrics
         except Exception as e:
-            print(f"❌ Cross-validation failed (possibly not enough data): {e}")
+            print(f"(x) Cross-validation failed (possibly not enough data): {e}")
             return None
 
     def predict(self, days=30, include_history=False, future_promotions=None):
@@ -138,11 +147,35 @@ class ForecastModel:
         
         result = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
         
-        if not include_history:
+        if include_history:
+            # Merge with actuals to show Actual vs Predicted
+            history = self.model.history[['ds', 'y']].copy()
+            # Ensure proper types for merge
+            result = pd.merge(result, history, on='ds', how='left')
+            # Fill NaN in 'y' with None or similar if needed, but JSON handles null/NaN usually
+            # 'y' will be NaN for future dates
+        else:
             last_history_date = self.model.history['ds'].max()
             result = result[result['ds'] > last_history_date]
 
-        return result.to_dict(orient='records')
+        # Handle NaNs and Infinity for JSON serialization
+        # Replace inf with nan first
+        result = result.replace([np.inf, -np.inf], np.nan)
+        # Convert to records
+        forecast_dicts = result.to_dict(orient='records')
+        
+        # Clean dicts (NaN -> None) manually to be 100% safe
+        clean_forecast = []
+        for row in forecast_dicts:
+            clean_row = {}
+            for k, v in row.items():
+                if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+                    clean_row[k] = None
+                else:
+                    clean_row[k] = v
+            clean_forecast.append(clean_row)
+            
+        return clean_forecast
 
     def get_model_components(self, days=30):
         """
@@ -280,7 +313,7 @@ class ForecastModel:
                 'seasonality_mode': ['additive', 'multiplicative'],
             }
 
-        print(f"🔧 Starting Hyperparameter Tuning over {len(list(ParameterGrid(param_grid)))} combinations...")
+        print(f"(wrench) Starting Hyperparameter Tuning over {len(list(ParameterGrid(param_grid)))} combinations...")
         
         best_params = self.params
         min_rmse = float('inf')
@@ -306,12 +339,12 @@ class ForecastModel:
                 if rmse < min_rmse:
                     min_rmse = rmse
                     best_params = params
-                    print(f"📈 New Best Params: {params} (RMSE: {rmse:.2f})")
+                    print(f"(chart) New Best Params: {params} (RMSE: {rmse:.2f})")
                     
             except Exception as e:
-                print(f"⚠️ Tuning failed for {params}: {e}")
+                print(f"(!) Tuning failed for {params}: {e}")
                 
-        print(f"✅ Optimization Complete. Best RMSE: {min_rmse:.2f}")
+        print(f"(tick) Optimization Complete. Best RMSE: {min_rmse:.2f}")
         self.params.update(best_params)
         return best_params
 
@@ -337,7 +370,7 @@ class ForecastModel:
                     "impact_description": f"Adds {row['coef']:.2f} to baseline" if row['mode'] == 'additive' else f"Multiplies baseline by {row['coef']:.2f}%"
                 }
         except Exception as e:
-            print(f"⚠️ Could not extract regressor coefficients: {e}")
+            print(f"(!) Could not extract regressor coefficients: {e}")
             
         # 2. Seasonality Magnitude
         # Compare max-min of seasonal components to see relative strength
@@ -372,6 +405,22 @@ class ForecastModel:
             self.is_trained = True
             return True
         return False
+
+    def _save_metrics(self):
+        import json
+        if self.last_metrics:
+            with open(self.metrics_path, 'w') as f:
+                json.dump(self.last_metrics, f)
+
+    def _load_metrics(self):
+        import json
+        if os.path.exists(self.metrics_path):
+            try:
+                with open(self.metrics_path, 'r') as f:
+                    return json.load(f)
+            except:
+                return None
+        return None
 
 # Singleton instance
 forecaster = ForecastModel()

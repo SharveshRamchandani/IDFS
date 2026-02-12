@@ -7,30 +7,52 @@ from app.models.supply_chain import SupplierStatus, POStatus, ShipmentStatus
 import random
 from datetime import date, timedelta
 
+def log(msg):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode('ascii', 'replace').decode())
+    
+    with open("seed_log.txt", "a", encoding="utf-8") as f:
+        f.write(str(msg) + "\n")
+
 def seed_db():
-    db = SessionLocal()
+    try:
+        log(">>> Starting DB Seed...")
+        db = SessionLocal()
+    except Exception as e:
+        log(f"!!! Failed to init SessionLocal: {e}")
+        return
+
     try:
         # 1. Create Users
-        print("👤 Creating Users...")
-        roles = ["admin", "analyst", "manager", "warehouse"]
-        for role in roles:
-            email = f"{role}@ikea.com"
-            user_in = UserCreate(
-                email=email,
-                password=f"{role}123456", # meets min length 8
-                full_name=f"{role.capitalize()} User",
-                role=role,
-                is_superuser=(role == "admin")
-            )
-            # Check if exists
+        log("--- Creating Users...")
+        roles_map = {
+            "admin": "admin",
+            "analyst": "inventory_analyst", 
+            "manager": "store_manager",
+            "warehouse": "staff"
+        }
+        
+        for email_prefix, role_enum in roles_map.items():
+            email = f"{email_prefix}@ikea.com"
+            
+            # Skip if user exists
             from app.models.user import User
-            user = db.query(User).filter(User.email == user_in.email).first()
+            user = db.query(User).filter(User.email == email).first()
             if not user:
+                user_in = UserCreate(
+                    email=email,
+                    password=f"{email_prefix}123456", 
+                    full_name=f"{email_prefix.capitalize()} User",
+                    role=role_enum,
+                    is_superuser=(role_enum == "admin")
+                )
                 create(db, user_in)
-                print(f"   Created {role} user.")
+                log(f"   Created {role_enum} user ({email}).")
 
         # 2. Create Products (if not exist)
-        print("📦 Creating Products & Inventory...")
+        log("(box) Creating Products & Inventory...")
         products_data = [
             {"sku": "SKU-001234", "name": "KALLAX Shelf Unit", "category": "Storage", "price": 79.99},
             {"sku": "SKU-002345", "name": "MALM Bed Frame", "category": "Bedroom", "price": 149.00},
@@ -55,7 +77,7 @@ def seed_db():
             db_products.append(obj)
 
         # 3. Create Stores
-        print("🏪 Creating Stores...")
+        log("(store) Creating Stores...")
         db_stores = []
         for i in range(1, 4):
             store_id = f"ST-00{i}"
@@ -86,7 +108,7 @@ def seed_db():
         db.commit()
 
         # 5. Create Suppliers
-        print("🚚 Creating Suppliers...")
+        log("(truck) Creating Suppliers...")
         suppliers_data = [
             {"name": "Global Woods Ltd", "contact": "John Doe", "email": "john@woods.com", "status": SupplierStatus.ACTIVE},
             {"name": "Fabrics & Co", "contact": "Jane Smith", "email": "jane@fabrics.com", "status": SupplierStatus.ACTIVE},
@@ -110,7 +132,7 @@ def seed_db():
             db_suppliers.append(obj)
 
         # 6. Create Purchase Orders & Shipments
-        print("📜 Creating POs and Shipments...")
+        log("(scroll) Creating POs and Shipments...")
         statuses = [POStatus.PENDING, POStatus.APPROVED, POStatus.PROCESSING, POStatus.DELIVERED]
         
         for i in range(15):
@@ -147,55 +169,111 @@ def seed_db():
         db.commit()
 
         # 7. Seed Sales Data (History)
-        print("📈 Seeding Historical Sales Data (This might take a moment)...")
+        log("(chart) Seeding Historical Sales Data (This might take a moment)...")
         from app.models.sales import SalesData
         
-        # Check if sales data already exists to avoid duplication
-        sales_count = db.query(SalesData).count()
-        if sales_count < 100:
-            start_date = date.today() - timedelta(days=365)
+        if True: # Force re-seed for ML testing
+            log("(!) Clearning existing sales data...")
+            db.query(SalesData).delete()
+            db.commit()
+            
+            start_date = date.today() - timedelta(days=730)
             sales_entries = []
             
-            for day_offset in range(366):
+            # Identify specific products for scenarios
+            dead_stock_product = db.query(Product).filter(Product.name == "LACK Side Table").first()
+            seasonal_product = db.query(Product).filter(Product.name == "EKTORP Sofa").first()
+            
+            # Dead Stock Cutoff: Stopped selling 150 days ago
+            dead_stock_cutoff = date.today() - timedelta(days=150)
+            
+            print(f"   - Dead Stock Candidate: {dead_stock_product.name} (Stops selling after {dead_stock_cutoff})")
+            
+            for day_offset in range(731):
                 current_date = start_date + timedelta(days=day_offset)
                 
-                # Simple seasonality affect (sine wave-ish or random spikes)
+                # Seasonality: Stronger sales in Nov/Dec (Month 11, 12)
+                month = current_date.month
+                is_holiday_season = month in [11, 12]
+                
+                # Weekly seasonality: Weekend spikes
                 is_weekend = current_date.weekday() >= 5
-                season_factor = 1.0 + (0.2 if is_weekend else 0.0)
                 
-                for store in db_stores:
-                    for product in db_products:
-                        # Base demand based on price (cheaper = more volume)
-                        base_demand = max(1, int(1000 / product.price)) 
-                        # Randomize
-                        qty = int(random.gauss(base_demand, base_demand * 0.3) * season_factor)
-                        qty = max(0, qty)
+                for product in db_products:
+                    # SCENARIO 1: Dead Stock
+                    if product.id == dead_stock_product.id and current_date > dead_stock_cutoff:
+                        continue # No sales for this product after cutoff
                         
-                        sales_entry = SalesData(
-                            date=current_date,
-                            sku_id=product.id,
-                            store_id=store.id,
-                            quantity=qty,
-                            onpromotion=random.random() > 0.9 # 10% chance of promotion
-                        )
-                        sales_entries.append(sales_entry)
+                    # SCENARIO 2: Seasonal Product (High variance)
+                    is_seasonal_item = (product.id == seasonal_product.id)
+                    
+                    # Base factors
+                    season_factor = 1.0
+                    if is_holiday_season:
+                        season_factor *= 1.5 if is_seasonal_item else 1.2
+                    if is_weekend:
+                        season_factor *= 1.3
+                        
+                    # Base demand calculation
+                    base_demand = max(1, int(2000 / product.price)) 
+                    
+                    # Random noise
+                    import math
+                    # Add a trend component (sales increase slightly over time)
+                    trend = 1.0 + (day_offset / 730.0) * 0.2 
+                    
+                    mu = base_demand * season_factor * trend
+                    sigma = mu * 0.3
+                    
+                    qty = int(random.normalvariate(mu, sigma))
+                    qty = max(0, qty)
+                    
+                    # Store loop - generate for all stores
+                    for store in db_stores:
+                        # Introduce store variability
+                        store_factor = 1.0 if store.region == "North" else 0.8
+                        store_qty = max(0, int(qty * store_factor))
+                        
+                        # Randomly skip some days for realistic sparsity
+                        if random.random() > 0.95: 
+                            store_qty = 0
+                            
+                        if store_qty > 0:
+                            sales_entry = SalesData(
+                                date=current_date,
+                                sku_id=product.id,
+                                store_id=store.id,
+                                quantity=store_qty,
+                                onpromotion=(random.random() > 0.9)
+                            )
+                            sales_entries.append(sales_entry)
                 
-                if len(sales_entries) > 1000:
-                    db.add_all(sales_entries)
+                # Batch insert every 30 days of data to keep memory usage low
+                if len(sales_entries) > 5000:
+                    db.bulk_save_objects(sales_entries)
                     db.commit()
                     sales_entries = []
             
             if sales_entries:
-                db.add_all(sales_entries)
+                db.bulk_save_objects(sales_entries)
                 db.commit()
-            print("✅ Added ~10,000 sales records.")
+            log("(tick) Added sales records.")
+            
+            # Update Inventory to reflect "Dead Stock" reality
+            # Dead stock item should have HIGH inventory but NO recent sales
+            dead_inv = db.query(StoreInventory).filter(StoreInventory.product_id == dead_stock_product.id).all()
+            for inv in dead_inv:
+                inv.quantity_on_hand = 150 # High stock
+                inv.last_restocked = dead_stock_cutoff - timedelta(days=20) # Old stock
+            db.commit()
+            
         else:
-            print("ℹ️ Sales data already exists, skipping seed.")
+            log("(i) Sales data already exists, skipping seed.")
 
-        print("✅ Database seeding completed successfully!")
+        log("(tick) Database seeding completed successfully!")
             
     except Exception as e:
-        print(f"❌ Error seeding DB: {e}")
+        log(f"(x) Error seeding DB: {e}")
         db.rollback()
     finally:
         db.close()

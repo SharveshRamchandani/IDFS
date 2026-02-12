@@ -11,6 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import { getDeadStock } from "@/lib/api";
 
 interface DeadStockItem {
   id: string;
@@ -23,15 +25,6 @@ interface DeadStockItem {
   value: number;
   recommendation: "markdown" | "clearance" | "dispose";
 }
-
-const deadStockItems: DeadStockItem[] = [
-  { id: "1", name: "LISABO Table, Ash", sku: "SKU-101234", category: "Dining", quantity: 45, lastSold: "2023-09-15", daysWithoutSale: 120, value: 8500, recommendation: "markdown" },
-  { id: "2", name: "NORRÅKER Bench, Birch", sku: "SKU-102345", category: "Dining", quantity: 23, lastSold: "2023-08-20", daysWithoutSale: 145, value: 3200, recommendation: "clearance" },
-  { id: "3", name: "MÖRBYLÅNGA Table, Oak", sku: "SKU-103456", category: "Dining", quantity: 12, lastSold: "2023-07-10", daysWithoutSale: 186, value: 9600, recommendation: "clearance" },
-  { id: "4", name: "GAMLARED Table, Light", sku: "SKU-104567", category: "Dining", quantity: 34, lastSold: "2023-10-05", daysWithoutSale: 100, value: 4200, recommendation: "markdown" },
-  { id: "5", name: "LERHAMN Chair Set", sku: "SKU-105678", category: "Dining", quantity: 67, lastSold: "2023-06-15", daysWithoutSale: 210, value: 5600, recommendation: "dispose" },
-  { id: "6", name: "ODGER Chair, Blue", sku: "SKU-106789", category: "Office", quantity: 28, lastSold: "2023-08-01", daysWithoutSale: 165, value: 2800, recommendation: "clearance" },
-];
 
 const recommendationStyles = {
   markdown: "bg-warning/10 text-warning-foreground border-warning/20",
@@ -46,6 +39,16 @@ const recommendationLabels = {
 };
 
 export default function DeadStock() {
+  const [deadStockItems, setItems] = useState<DeadStockItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getDeadStock().then(data => {
+      // Transform data if needed, but the API should match
+      setItems(data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
   const totalValue = deadStockItems.reduce((acc, item) => acc + item.value, 0);
   const totalUnits = deadStockItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -76,7 +79,9 @@ export default function DeadStock() {
             <CardHeader className="pb-2">
               <CardDescription>Avg Days Without Sale</CardDescription>
               <CardTitle className="text-2xl">
-                {Math.round(deadStockItems.reduce((acc, item) => acc + item.daysWithoutSale, 0) / deadStockItems.length)}
+                {deadStockItems.length > 0
+                  ? Math.round(deadStockItems.reduce((acc, item) => acc + item.daysWithoutSale, 0) / deadStockItems.length)
+                  : 0}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -118,35 +123,37 @@ export default function DeadStock() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deadStockItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                          <IconPackage className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <span className="font-medium">{item.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.category}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{item.quantity}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.lastSold}</TableCell>
-                    <TableCell>
-                      <span className={item.daysWithoutSale > 150 ? "text-destructive font-medium" : "text-warning-foreground"}>
-                        {item.daysWithoutSale} days
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-medium">${item.value.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={recommendationStyles[item.recommendation]}>
-                        {recommendationLabels[item.recommendation]}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {loading ? <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow> :
+                  deadStockItems.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center">No dead stock found.</TableCell></TableRow> :
+                    deadStockItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                              <IconPackage className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{item.sku}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.category}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{item.quantity}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.lastSold}</TableCell>
+                        <TableCell>
+                          <span className={item.daysWithoutSale > 150 ? "text-destructive font-medium" : "text-warning-foreground"}>
+                            {item.daysWithoutSale} days
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-medium">${item.value.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={recommendationStyles[item.recommendation]}>
+                            {recommendationLabels[item.recommendation]}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
               </TableBody>
             </Table>
           </CardContent>

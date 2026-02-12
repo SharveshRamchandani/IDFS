@@ -94,16 +94,17 @@ def predict_demand(
 def predict_global_demand(
     days: int = 30, 
     detailed: bool = False,
+    include_history: bool = False,
     current_user: models.user.User = Depends(deps.get_current_analyst_user)
 ):
     """
     Generate global demand forecast using the advanced Prophet model.
-    Optionally returns detailed components (trend, seasonality).
+    Optionally returns detailed components (trend, seasonality) and historical actuals.
     """
     from app.ml.inference import predict_demand, get_components
     
     try:
-        forecast = predict_demand(days=days)
+        forecast = predict_demand(days=days, include_history=include_history)
         if isinstance(forecast, dict) and "error" in forecast:
              raise HTTPException(status_code=503, detail=forecast["error"])
              
@@ -149,3 +150,29 @@ def simulate_forecast_scenario(
         return {"scenario_forecast": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/accuracy")
+def get_forecast_accuracy(
+    current_user: models.user.User = Depends(deps.get_current_analyst_user)
+):
+    """
+    Get the model performance metrics (RMSE, MAE, MAPE).
+    """
+    from app.ml.model import forecaster
+    
+    if not forecaster.last_metrics:
+        # Try to load if not in memory
+        if hasattr(forecaster, '_load_metrics'):
+             forecaster.last_metrics = forecaster._load_metrics()
+        
+    if not forecaster.last_metrics:
+        # If still no metrics, we might need to trigger evaluation (optional, but slow)
+        return {
+            "status": "not_evaluated",
+            "message": "Model has not been evaluated yet. Trigger training/evaluation."
+        }
+        
+    return {
+        "status": "evaluated",
+        "metrics": forecaster.last_metrics
+    }

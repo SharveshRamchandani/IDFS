@@ -116,3 +116,18 @@ def get_top_stores(db: Session, limit: int = 5):
         .limit(limit)
         .all()
     )
+
+from datetime import timedelta
+    
+def get_daily_sales_trend(db: Session, days: int = 30):
+    start_date = date.today() - timedelta(days=days)
+    return (
+        db.query(
+            SalesData.date, 
+            func.sum(SalesData.quantity).label("quantity")
+        )
+        .filter(SalesData.date >= start_date)
+        .group_by(SalesData.date)
+        .order_by(SalesData.date)
+        .all()
+    )
