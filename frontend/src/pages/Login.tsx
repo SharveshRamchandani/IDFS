@@ -130,7 +130,7 @@ export default function Login() {
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
             <IconBox className="h-8 w-8" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">IDFS</h1>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">Smart Demand Forecasting</h1>
         </div>
 
         <Card className="shadow-xl border-0">
@@ -232,7 +232,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex justify-center bg-">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => toast.error('Google Login Failed')}
@@ -242,6 +242,8 @@ export default function Login() {
             </form>
           </CardContent>
         </Card>
+
+        
       </div>
     </div>
   );
