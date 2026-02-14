@@ -11,12 +11,12 @@ export default function Notifications() {
                         <CardTitle className="items-center flex font-bold text-lg"><IconBell className="mr-2" /> Recent Alerts</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="p-4 border rounded-lg bg-orange-50 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200">
+                        <div className="p-4 border rounded-lg bg-warning/10 text-warning-foreground">
                             <h4 className="font-semibold">Low Stock Triggered</h4>
                             <p className="text-sm">SKU-001234 (KALLAX Shelf Unit) is below threshold.</p>
                             <span className="text-xs opacity-70">2 hours ago</span>
                         </div>
-                        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200">
+                        <div className="p-4 border rounded-lg bg-info/10 text-info-foreground">
                             <h4 className="font-semibold">Shipment Arrived</h4>
                             <p className="text-sm">Shipment TRK-55102 from Shanghai has arrived at the warehouse.</p>
                             <span className="text-xs opacity-70">Yesterday</span>

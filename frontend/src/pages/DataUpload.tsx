@@ -85,8 +85,8 @@ export default function DataUpload() {
                         </Button>
 
                         {uploadStats && (
-                            <div className="mt-6 p-4 border rounded-lg bg-green-500/10 border-green-500/20">
-                                <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
+                            <div className="mt-6 p-4 border rounded-lg bg-success/10 border-success/20">
+                                <div className="flex items-center gap-2 text-success font-semibold mb-2">
                                     <IconCircleCheck className="h-5 w-5" />
                                     Upload Complete
                                 </div>

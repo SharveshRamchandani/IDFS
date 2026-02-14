@@ -178,13 +178,13 @@ export default function Suppliers() {
                                             </TableCell>
                                             <TableCell>{supplier.contact}</TableCell>
                                             <TableCell>
-                                                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                                <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
                                                     {supplier.status}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center">
-                                                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                                                    <Star className="h-4 w-4 text-warning fill-current mr-1" />
                                                     {supplier.rating}
                                                 </div>
                                             </TableCell>

@@ -108,7 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild className="hover:bg-transparent">
@@ -119,7 +119,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {!collapsed && (
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">IKEA Forecast</span>
-                    <span className="text-xs text-muted-foreground">Supply Chain</span>
                   </div>
                 )}
               </a>

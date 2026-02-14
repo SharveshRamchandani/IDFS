@@ -17,15 +17,8 @@ interface StatCardProps {
 }
 
 export function StatCard({ title, value, description, trend, icon: Icon, variant = "default" }: StatCardProps) {
-  const variantStyles = {
-    default: "from-primary/5 to-card",
-    warning: "from-warning/10 to-card",
-    success: "from-success/10 to-card",
-    danger: "from-destructive/10 to-card",
-  };
-
   return (
-    <Card className={`@container/card bg-gradient-to-t ${variantStyles[variant]} shadow-sm`}>
+    <Card className="@container/card bg-sidebar-background">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardDescription className="text-sm font-semibold text-gray-700">{title}</CardDescription>
         <Icon className="h-5 w-5 text-gray-700" />

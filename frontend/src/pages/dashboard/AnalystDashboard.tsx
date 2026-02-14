@@ -96,7 +96,7 @@ export default function AnalystDashboard() {
 
         {/* Training Status Alert */}
         {trainingStatus?.is_training && (
-          <Alert className="bg-blue-500/10 border-blue-500/50 text-blue-500">
+          <Alert className="bg-info/10 border-info/50 text-info">
             <IconRefresh className="h-4 w-4 animate-spin" />
             <AlertTitle>Model Training in Progress</AlertTitle>
             <AlertDescription>
@@ -108,8 +108,8 @@ export default function AnalystDashboard() {
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Demand Forecast</h2>
-            <p className="text-gray-600 font-medium">AI-driven predictions using Prophet</p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Demand Forecast</h2>
+            <p className="text-muted-foreground font-medium">AI-driven predictions using Prophet</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" onClick={handleRetrain} disabled={trainingStatus?.is_training}>
@@ -126,8 +126,8 @@ export default function AnalystDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-gray-900 font-bold">Global Sales Forecast</CardTitle>
-              <CardDescription className="text-gray-600 font-medium">Predicted sales for next {timeRange} days</CardDescription>
+              <CardTitle className="text-foreground font-bold">Global Sales Forecast</CardTitle>
+              <CardDescription className="text-muted-foreground font-medium">Predicted sales for next {timeRange} days</CardDescription>
             </div>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-32">

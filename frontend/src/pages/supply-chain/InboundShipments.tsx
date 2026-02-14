@@ -67,7 +67,7 @@ const InboundShipments = () => {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-500">{shipments.filter(s => s.status === 'Delayed').length}</div>
+                            <div className="text-2xl font-bold text-destructive">{shipments.filter(s => s.status === 'Delayed').length}</div>
                             <p className="text-xs text-muted-foreground">Due to Customs Hold</p>
                         </CardContent>
                     </Card>

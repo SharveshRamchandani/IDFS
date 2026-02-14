@@ -130,8 +130,7 @@ export default function Login() {
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
             <IconBox className="h-8 w-8" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">Smart Demand Forecasting</h1>
-          <p className="mt-1 text-sm text-muted-foreground">IKEA Supply Chain Management System</p>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">IDFS</h1>
         </div>
 
         <Card className="shadow-xl border-0">
@@ -243,10 +242,6 @@ export default function Login() {
             </form>
           </CardContent>
         </Card>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          © 2024 IKEA Supply Chain. All rights reserved.
-        </p>
       </div>
     </div>
   );

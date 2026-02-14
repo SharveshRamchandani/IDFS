@@ -86,7 +86,7 @@ export default function AdminDashboard() {
         {/* System Stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {systemStats.map((stat) => (
-            <Card key={stat.title} className="bg-gradient-to-t from-primary/5 to-card">
+            <Card key={stat.title} className="bg-sidebar-background">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription>{stat.title}</CardDescription>
                 <stat.icon className="h-5 w-5 text-muted-foreground" />

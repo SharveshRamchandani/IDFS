@@ -92,7 +92,7 @@ export default function DemandForecast() {
 
         {/* KPI Summary */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="bg-gradient-to-t from-primary/5 to-card">
+          <Card className="bg-sidebar-background">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardDescription>Predicted Total Demand</CardDescription>
               <IconTrendingUp className="h-5 w-5 text-primary" />
@@ -104,7 +104,7 @@ export default function DemandForecast() {
           </Card>
 
           {/* Placeholder for confidence - difficult to get single number without evaluation */}
-          <Card className="bg-gradient-to-t from-success/5 to-card">
+          <Card className="bg-sidebar-background">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardDescription>Model Status</CardDescription>
               <IconTarget className="h-5 w-5 text-success" />
@@ -177,7 +177,7 @@ export default function DemandForecast() {
                     <Line
                       type="monotone"
                       dataKey="y"
-                      stroke="#10b981" // Green for actual
+                      stroke="hsl(var(--success))" // Green for actual
                       strokeWidth={2}
                       dot={{ r: 2 }}
                       name="Actual Sales"

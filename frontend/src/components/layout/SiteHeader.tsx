@@ -1,9 +1,10 @@
-import { IconBell, IconSearch, IconMoon, IconSun } from "@tabler/icons-react";
+import { IconBell, IconSearch } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +25,7 @@ export function SiteHeader({ title = "Dashboard" }: SiteHeaderProps) {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <h1 className="text-lg font-semibold">{title}</h1>
-        
+
         <div className="ml-auto flex items-center gap-2">
           <div className="relative hidden md:block">
             <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -34,6 +35,8 @@ export function SiteHeader({ title = "Dashboard" }: SiteHeaderProps) {
               className="h-9 w-64 pl-9 bg-muted/50"
             />
           </div>
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

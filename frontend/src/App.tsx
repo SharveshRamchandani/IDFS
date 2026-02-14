@@ -35,6 +35,9 @@ import Notifications from "./pages/Notifications";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 
+
+import { ThemeProvider } from "@/contexts/ThemeContext";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,53 +45,55 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Redirect root to login */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
 
-            {/* Auth Routes */}
-            <Route path="/login" element={<Login />} />
+              {/* Auth Routes */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Dashboard Routes */}
-            <Route path="/dashboard/store" element={<StoreManagerDashboard />} />
-            <Route path="/dashboard/analyst" element={<AnalystDashboard />} />
-            <Route path="/dashboard/warehouse" element={<WarehouseDashboard />} />
-            <Route path="/dashboard/admin" element={<AdminDashboard />} />
+              {/* Dashboard Routes */}
+              <Route path="/dashboard/store" element={<StoreManagerDashboard />} />
+              <Route path="/dashboard/analyst" element={<AnalystDashboard />} />
+              <Route path="/dashboard/warehouse" element={<WarehouseDashboard />} />
+              <Route path="/dashboard/admin" element={<AdminDashboard />} />
 
-            {/* Inventory Routes */}
-            <Route path="/inventory" element={<InventoryList />} />
-            <Route path="/inventory/low-stock" element={<LowStock />} />
-            <Route path="/inventory/dead-stock" element={<DeadStock />} />
+              {/* Inventory Routes */}
+              <Route path="/inventory" element={<InventoryList />} />
+              <Route path="/inventory/low-stock" element={<LowStock />} />
+              <Route path="/inventory/dead-stock" element={<DeadStock />} />
 
-            {/* Forecasting Routes */}
-            <Route path="/forecasting/demand" element={<DemandForecast />} />
-            <Route path="/forecasting/seasonal" element={<SeasonalForecast />} />
-            <Route path="/forecasting/accuracy" element={<ForecastAccuracy />} />
+              {/* Forecasting Routes */}
+              <Route path="/forecasting/demand" element={<DemandForecast />} />
+              <Route path="/forecasting/seasonal" element={<SeasonalForecast />} />
+              <Route path="/forecasting/accuracy" element={<ForecastAccuracy />} />
 
-            {/* Supply Chain Routes */}
-            <Route path="/supply-chain/orders" element={<PurchaseOrders />} />
-            <Route path="/supply-chain/shipments" element={<InboundShipments />} />
-            <Route path="/supply-chain/suppliers" element={<Suppliers />} />
+              {/* Supply Chain Routes */}
+              <Route path="/supply-chain/orders" element={<PurchaseOrders />} />
+              <Route path="/supply-chain/shipments" element={<InboundShipments />} />
+              <Route path="/supply-chain/suppliers" element={<Suppliers />} />
 
-            {/* Admin Routes (placeholder) */}
+              {/* Admin Routes (placeholder) */}
 
-            <Route path="/admin/settings" element={<AdminDashboard />} />
-            <Route path="/admin/thresholds" element={<AdminDashboard />} />
+              <Route path="/admin/settings" element={<AdminDashboard />} />
+              <Route path="/admin/thresholds" element={<AdminDashboard />} />
 
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/data/upload" element={<DataUpload />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/data/upload" element={<DataUpload />} />
 
-            {/* User Routes */}
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/notifications" element={<Notifications />} />
+              {/* User Routes */}
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/notifications" element={<Notifications />} />
 
-            {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Catch-all */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
