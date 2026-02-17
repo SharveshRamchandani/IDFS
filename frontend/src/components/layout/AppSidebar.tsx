@@ -49,8 +49,8 @@ import { IconChevronUp } from "@tabler/icons-react";
 const dashboardItems = [
   { title: "Store Manager", url: "/dashboard/store", icon: IconDashboard },
   { title: "Inventory Analyst", url: "/dashboard/analyst", icon: IconChartBar },
-  { title: "Warehouse", url: "/dashboard/warehouse", icon: IconBuildingWarehouse },
   { title: "Admin / HQ", url: "/dashboard/admin", icon: IconUsers },
+  { title: "Notifications", url: "/notifications", icon: IconBell },
 ];
 
 const inventoryItems = [
@@ -69,6 +69,7 @@ const supplyChainItems = [
   { title: "Purchase Orders", url: "/supply-chain/orders", icon: IconShoppingCart },
   { title: "Inbound Shipments", url: "/supply-chain/shipments", icon: IconTruck },
   { title: "Suppliers", url: "/supply-chain/suppliers", icon: IconClipboardList },
+   { title: "Warehouse", url: "/dashboard/warehouse", icon: IconBuildingWarehouse },
 ];
 
 const adminItems = [
@@ -108,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild className="hover:bg-transparent">
@@ -119,7 +120,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {!collapsed && (
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">IKEA Forecast</span>
-                    <span className="text-xs text-muted-foreground">Supply Chain</span>
                   </div>
                 )}
               </a>
@@ -254,10 +254,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <IconUserCircle className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/notifications")}>
+                {/* <DropdownMenuItem onClick={() => navigate("/notifications")}>
                   <IconBell className="mr-2 h-4 w-4" />
                   Notifications
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuItem onClick={() => navigate("/admin/settings")}>
                   <IconSettings className="mr-2 h-4 w-4" />
                   Settings

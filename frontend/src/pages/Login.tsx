@@ -131,7 +131,6 @@ export default function Login() {
             <IconBox className="h-8 w-8" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-foreground">Smart Demand Forecasting</h1>
-          <p className="mt-1 text-sm text-muted-foreground">IKEA Supply Chain Management System</p>
         </div>
 
         <Card className="shadow-xl border-0">
@@ -233,7 +232,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex justify-center bg-">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => toast.error('Google Login Failed')}
@@ -244,9 +243,7 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          © 2024 IKEA Supply Chain. All rights reserved.
-        </p>
+        
       </div>
     </div>
   );

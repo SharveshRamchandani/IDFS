@@ -1,225 +1,561 @@
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IconUsers, IconTrash, IconPlus } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { getUsers, updateUserRole, createUser, deleteUser } from "@/lib/api";
-import { toast } from "sonner";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  IconUsers,
+  IconShield,
+  IconBuildingStore,
+  IconTruckDelivery,
+  IconPlus,
+  IconDotsVertical,
+  IconEdit,
+  IconTrash,
+  IconSearch,
+} from "@tabler/icons-react";
+import { toast } from "sonner";
 
-export default function AdminUsers() {
-    const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [open, setOpen] = useState(false);
 
-    // New User State
-    const [newUser, setNewUser] = useState({
-        email: "",
-        password: "",
-        full_name: "",
-        role: "analyst"
-    });
 
-    const fetchUsers = async () => {
-        try {
-            const data = await getUsers();
-            setUsers(data);
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to fetch users");
-        } finally {
-            setLoading(false);
-        }
-    };
+function UserManagement() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("store_manager");
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
+  // Fetch users from backend
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/users", {
+        headers: {
+          "x-auth-token": token || "",
+        },
+      });
 
-    const handleRoleChange = async (userId: number, newRole: string) => {
-        try {
-            await updateUserRole(userId, newRole);
-            toast.success("User role updated");
-            fetchUsers(); // Refresh list
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to update role");
-        }
-    };
+      if (response.ok) {
+        const data = await response.json();
+        // Filter out users with 'user' role or no role - only show users with assigned roles
+        const validUsers = data.filter((user: any) =>
+          user.role && user.role !== 'user'
+        );
+        setUsers(validUsers);
+      } else {
+        console.error("Failed to fetch users");
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleDelete = async (userId: number) => {
-        if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-        try {
-            await deleteUser(userId);
-            toast.success("User deleted successfully");
-            fetchUsers();
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error.message || "Failed to delete user");
-        }
+  const filteredUsers = users.filter(
+    (user) =>
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSendInvitation = async () => {
+    if (!inviteEmail) {
+      toast.error("Email is required");
+      return;
     }
 
-    const handleCreate = async () => {
-        if (!newUser.email || !newUser.password) {
-            toast.error("Email and password are required");
-            return;
-        }
-        try {
-            await createUser(newUser);
-            toast.success("User created successfully");
-            setOpen(false);
-            fetchUsers();
-            setNewUser({ email: "", password: "", full_name: "", role: "analyst" });
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error.message || "Failed to create user");
-        }
-    };
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/users/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token || "",
+        },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      });
 
-    return (
-        <DashboardLayout title="Admin > User Management">
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-3xl font-bold tracking-tight">System Users</h2>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <IconPlus className="mr-2 h-4 w-4" /> Add User
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New User</DialogTitle>
-                                <DialogDescription>Create a new user account.</DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="fullname" className="text-right">Full Name</Label>
-                                    <Input
-                                        id="fullname"
-                                        value={newUser.full_name}
-                                        onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                                        className="col-span-3"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="email" className="text-right">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={newUser.email}
-                                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                        className="col-span-3"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="password" className="text-right">Password</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={newUser.password}
-                                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                        className="col-span-3"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="role" className="text-right">Role</Label>
-                                    <Select
-                                        value={newUser.role}
-                                        onValueChange={(val) => setNewUser({ ...newUser, role: val })}
-                                    >
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Select Role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                            <SelectItem value="analyst">Analyst</SelectItem>
-                                            <SelectItem value="manager">Manager</SelectItem>
-                                            <SelectItem value="warehouse">Warehouse</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button onClick={handleCreate}>Create User</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("User created successfully", {
+          description: `${inviteEmail} has been added with ${inviteRole} role.`,
+        });
+        setInviteDialogOpen(false);
+        setInviteEmail("");
+        setInviteRole("store_manager");
+        // Refresh user list
+        fetchUsers();
+      } else {
+        toast.error("Failed to create user", {
+          description: data.msg || "An error occurred",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast.error("Failed to create user", {
+        description: "An error occurred. Please try again.",
+      });
+    }
+  };
+
+  const handleRoleChange = async (userId: number, newRole: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token || "",
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update local state
+        setUsers(users.map(user =>
+          user.id === userId ? { ...user, role: newRole } : user
+        ));
+        toast.success("Role updated successfully");
+      } else {
+        toast.error("Failed to update role", {
+          description: data.msg || "An error occurred",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating role:", error);
+      toast.error("Failed to update role", {
+        description: "An error occurred. Please try again.",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    const userToDelete = users.find(u => u.id === userId);
+
+    if (!confirm(`Are you sure you want to delete ${userToDelete?.email}?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "x-auth-token": token || "",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUsers(users.filter(user => user.id !== userId));
+        toast.success("User deleted successfully");
+      } else {
+        toast.error("Failed to delete user", {
+          description: data.msg || "An error occurred",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user", {
+        description: "An error occurred. Please try again.",
+      });
+    }
+  };
+
+  if (loading) {
+    return <div>Loading users...</div>;
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <IconUsers className="size-5" />
+              User Management
+            </CardTitle>
+          </div>
+          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <IconPlus className="size-4" />
+                Invite Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Invite Team Member</DialogTitle>
+                <DialogDescription>
+                  Send an invitation to add a new member to your team.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@yourcompany.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
                 </div>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Users & Roles</CardTitle>
-                        <CardDescription>Manage user access and permissions.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="font-medium">{user.full_name}</TableCell>
-                                        <TableCell>{user.email}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={user.is_active ? "default" : "secondary"}>
-                                                {user.is_active ? "Active" : "Inactive"}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Select
-                                                defaultValue={user.role}
-                                                onValueChange={(val) => handleRoleChange(user.id, val)}
-                                            >
-                                                <SelectTrigger className="w-32">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="admin">Admin</SelectItem>
-                                                    <SelectItem value="analyst">Analyst</SelectItem>
-                                                    <SelectItem value="manager">Manager</SelectItem>
-                                                    <SelectItem value="warehouse">Warehouse</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(user.id)}
-                                                className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                                            >
-                                                <IconTrash className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </div>
-        </DashboardLayout>
-    );
+                <div className="space-y-2">
+                  <Label htmlFor="role">Select role</Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                    <SelectTrigger id="role" className="w-full">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="store_manager">Store Manager</SelectItem>
+                      <SelectItem value="inventory_analyst">Inventory Analyst</SelectItem>
+                      <SelectItem value="staff">Warehouse Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  onClick={handleSendInvitation}
+                  disabled={!inviteEmail}
+                  className="w-full sm:w-auto"
+                >
+                  Send Invitation
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <div className="relative">
+            <IconSearch className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="text-sm text-muted-foreground mb-4">
+          {filteredUsers.length} members
+        </div>
+        <ul className="divide-y divide-border">
+          {filteredUsers.map((user) => (
+            <li key={user.id} className="flex items-center justify-between gap-4 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar>
+                  <AvatarImage src={user.avatar_url} alt={user.username || user.email} />
+                  <AvatarFallback>{(user.username || user.email).charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{user.username || user.email}</p>
+                  <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  defaultValue={user.role}
+                  onValueChange={(value) => handleRoleChange(user.id, value)}
+                >
+                  <SelectTrigger className="w-50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="store_manager">Store Manager</SelectItem>
+                    <SelectItem value="inventory_analyst">Inventory Analyst</SelectItem>
+                    <SelectItem value="staff">Warehouse Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="size-8">
+                      <IconDotsVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-destructive">
+                      <IconTrash className="size-4 mr-2" />
+                      Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
 }
+
+// function RoleManagement() {
+//   return (
+//     <Card className="overflow-hidden">
+//       <CardHeader>
+//         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+//           <div>
+//             <CardTitle className="flex items-center gap-2">
+//               <IconShield className="size-5" />
+//               Role & Permission Management
+//             </CardTitle>
+//           </div>
+//           <Button className="gap-2">
+//             <IconPlus className="size-4" />
+//             Create Role
+//           </Button>
+//         </div>
+//       </CardHeader>
+//       <CardContent className="p-0">
+//         <Table>
+//           <TableHeader>
+//             <TableRow>
+//               <TableHead>Role Name</TableHead>
+//               <TableHead className="hidden sm:table-cell">Description</TableHead>
+//               <TableHead>Permissions</TableHead>
+//               <TableHead>Users</TableHead>
+//               <TableHead className="w-12"></TableHead>
+//             </TableRow>
+//           </TableHeader>
+//           <TableBody>
+//             {mockRoles.map((role) => (
+//               <TableRow key={role.id}>
+//                 <TableCell className="font-medium">{role.name}</TableCell>
+//                 <TableCell className="hidden sm:table-cell text-muted-foreground">
+//                   {role.description}
+//                 </TableCell>
+//                 <TableCell>
+//                   <Badge variant="secondary">{role.permissions} permissions</Badge>
+//                 </TableCell>
+//                 <TableCell>{role.users} users</TableCell>
+//                 <TableCell>
+//                   <DropdownMenu>
+//                     <DropdownMenuTrigger asChild>
+//                       <Button variant="ghost" size="icon" className="size-8">
+//                         <IconDotsVertical className="size-4" />
+//                       </Button>
+//                     </DropdownMenuTrigger>
+//                     <DropdownMenuContent align="end">
+//                       <DropdownMenuItem>
+//                         <IconEdit className="size-4 mr-2" />
+//                         Edit
+//                       </DropdownMenuItem>
+//                       <DropdownMenuItem className="text-destructive">
+//                         <IconTrash className="size-4 mr-2" />
+//                         Delete
+//                       </DropdownMenuItem>
+//                     </DropdownMenuContent>
+//                   </DropdownMenu>
+//                 </TableCell>
+//               </TableRow>
+//             ))}
+//           </TableBody>
+//         </Table>
+//       </CardContent>
+//     </Card>
+//   );
+// }
+
+// function StoreManagement() {
+//   return (
+//     <Card className="overflow-hidden">
+//       <CardHeader>
+//         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+//           <div>
+//             <CardTitle className="flex items-center gap-2">
+//               <IconBuildingStore className="size-5" />
+//               Store Management
+//             </CardTitle>
+//           </div>
+//           <Button className="gap-2">
+//             <IconPlus className="size-4" />
+//             Add Store
+//           </Button>
+//         </div>
+//       </CardHeader>
+//       <CardContent className="p-0">
+//         <Table>
+//           <TableHeader>
+//             <TableRow>
+//               <TableHead>Store Name</TableHead>
+//               <TableHead className="hidden md:table-cell">Location</TableHead>
+//               <TableHead className="hidden sm:table-cell">Manager</TableHead>
+//               <TableHead>Status</TableHead>
+//               <TableHead className="w-12"></TableHead>
+//             </TableRow>
+//           </TableHeader>
+//           <TableBody>
+//             {mockStores.map((store) => (
+//               <TableRow key={store.id}>
+//                 <TableCell className="font-medium">{store.name}</TableCell>
+//                 <TableCell className="hidden md:table-cell text-muted-foreground">
+//                   {store.location}
+//                 </TableCell>
+//                 <TableCell className="hidden sm:table-cell">{store.manager}</TableCell>
+//                 <TableCell>
+//                   <Badge variant={store.status === "Active" ? "default" : "secondary"}>
+//                     {store.status}
+//                   </Badge>
+//                 </TableCell>
+//                 <TableCell>
+//                   <DropdownMenu>
+//                     <DropdownMenuTrigger asChild>
+//                       <Button variant="ghost" size="icon" className="size-8">
+//                         <IconDotsVertical className="size-4" />
+//                       </Button>
+//                     </DropdownMenuTrigger>
+//                     <DropdownMenuContent align="end">
+//                       <DropdownMenuItem>
+//                         <IconEdit className="size-4 mr-2" />
+//                         Edit
+//                       </DropdownMenuItem>
+//                       <DropdownMenuItem className="text-destructive">
+//                         <IconTrash className="size-4 mr-2" />
+//                         Delete
+//                       </DropdownMenuItem>
+//                     </DropdownMenuContent>
+//                   </DropdownMenu>
+//                 </TableCell>
+//               </TableRow>
+//             ))}
+//           </TableBody>
+//         </Table>
+//       </CardContent>
+//     </Card>
+//   );
+// }
+
+// function SupplierManagement() {
+//   return (
+//     <Card className="overflow-hidden">
+//       <CardHeader>
+//         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+//           <div>
+//             <CardTitle className="flex items-center gap-2">
+//               <IconTruckDelivery className="size-5" />
+//               Supplier Management
+//             </CardTitle>
+
+//           </div>
+//           <Button className="gap-2">
+//             <IconPlus className="size-4" />
+//             Add Supplier
+//           </Button>
+//         </div>
+//       </CardHeader>
+//       <CardContent className="p-0">
+//         <Table>
+//           <TableHeader>
+//             <TableRow>
+//               <TableHead>Supplier Name</TableHead>
+//               <TableHead className="hidden sm:table-cell">Contact</TableHead>
+//               <TableHead className="hidden md:table-cell">Email</TableHead>
+//               <TableHead>Status</TableHead>
+//               <TableHead className="w-12"></TableHead>
+//             </TableRow>
+//           </TableHeader>
+//           <TableBody>
+//             {mockSuppliers.map((supplier) => (
+//               <TableRow key={supplier.id}>
+//                 <TableCell className="font-medium">{supplier.name}</TableCell>
+//                 <TableCell className="hidden sm:table-cell">{supplier.contact}</TableCell>
+//                 <TableCell className="hidden md:table-cell text-muted-foreground">
+//                   {supplier.email}
+//                 </TableCell>
+//                 <TableCell>
+//                   <Badge
+//                     variant={supplier.status === "Active" ? "default" : "outline"}
+//                   >
+//                     {supplier.status}
+//                   </Badge>
+//                 </TableCell>
+//                 <TableCell>
+//                   <DropdownMenu>
+//                     <DropdownMenuTrigger asChild>
+//                       <Button variant="ghost" size="icon" className="size-8">
+//                         <IconDotsVertical className="size-4" />
+//                       </Button>
+//                     </DropdownMenuTrigger>
+//                     <DropdownMenuContent align="end">
+//                       <DropdownMenuItem>
+//                         <IconEdit className="size-4 mr-2" />
+//                         Edit
+//                       </DropdownMenuItem>
+//                       <DropdownMenuItem className="text-destructive">
+//                         <IconTrash className="size-4 mr-2" />
+//                         Delete
+//                       </DropdownMenuItem>
+//                     </DropdownMenuContent>
+//                   </DropdownMenu>
+//                 </TableCell>
+//               </TableRow>
+//             ))}
+//           </TableBody>
+//         </Table>
+//       </CardContent>
+//     </Card>
+//   );
+// }
+
+export default function AdminPage() {
+  return (
+    <DashboardLayout title="Admin Access">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Admin Access</h1>
+        </div>
+            <UserManagement />          
+      </div>
+    </DashboardLayout>
+  );
+}
+

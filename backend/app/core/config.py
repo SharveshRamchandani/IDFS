@@ -18,10 +18,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Google OAuth
-    GOOGLE_CLIENT_ID: str = "YOUR_GOOGLE_CLIENT_ID_HERE"
+    GOOGLE_CLIENT_ID: str = "138379454132-r3t52u7nflg5tsi61r1r0ektt0f51723.apps.googleusercontent.com"
 
     class Config:
         case_sensitive = True
         env_file = ".env"
+        # Increase priority of env file
+        env_file_encoding = 'utf-8'
 
 settings = Settings()
+
+# Fallback for development if SECRET_KEY is not set
+if not settings.SECRET_KEY:
+    import secrets
+    print("[WARNING] SECRET_KEY not set in .env or config. Using temporary random key.")
+    settings.SECRET_KEY = secrets.token_urlsafe(32)
