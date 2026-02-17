@@ -3,9 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Auth Pages
 import Login from "./pages/Login";
+import UnauthorizedPage from "./pages/Unauthorized";
 
 // Dashboard Pages
 import StoreManagerDashboard from "./pages/dashboard/StoreManagerDashboard";
@@ -54,39 +56,173 @@ const App = () => (
 
               {/* Auth Routes */}
               <Route path="/login" element={<Login />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-              {/* Dashboard Routes */}
-              <Route path="/dashboard/store" element={<StoreManagerDashboard />} />
-              <Route path="/dashboard/analyst" element={<AnalystDashboard />} />
-              <Route path="/dashboard/warehouse" element={<WarehouseDashboard />} />
-              <Route path="/dashboard/admin" element={<AdminDashboard />} />
+              {/* Dashboard Routes - Protected */}
+              <Route
+                path="/dashboard/store"
+                element={
+                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="store">
+                    <StoreManagerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/analyst"
+                element={
+                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="analyst">
+                    <AnalystDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/warehouse"
+                element={
+                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="warehouse">
+                    <WarehouseDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/admin"
+                element={
+                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Inventory Routes */}
-              <Route path="/inventory" element={<InventoryList />} />
-              <Route path="/inventory/low-stock" element={<LowStock />} />
-              <Route path="/inventory/dead-stock" element={<DeadStock />} />
+              {/* Inventory Routes - Protected */}
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute requiredCategory="inventory" requiredFeature="all">
+                    <InventoryList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory/low-stock"
+                element={
+                  <ProtectedRoute requiredCategory="inventory" requiredFeature="low-stock">
+                    <LowStock />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory/dead-stock"
+                element={
+                  <ProtectedRoute requiredCategory="inventory" requiredFeature="dead-stock">
+                    <DeadStock />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Forecasting Routes */}
-              <Route path="/forecasting/demand" element={<DemandForecast />} />
-              <Route path="/forecasting/seasonal" element={<SeasonalForecast />} />
-              <Route path="/forecasting/accuracy" element={<ForecastAccuracy />} />
+              {/* Forecasting Routes - Protected */}
+              <Route
+                path="/forecasting/demand"
+                element={
+                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="demand">
+                    <DemandForecast />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/forecasting/seasonal"
+                element={
+                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="seasonal">
+                    <SeasonalForecast />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/forecasting/accuracy"
+                element={
+                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="accuracy">
+                    <ForecastAccuracy />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Supply Chain Routes */}
-              <Route path="/supply-chain/orders" element={<PurchaseOrders />} />
-              <Route path="/supply-chain/shipments" element={<InboundShipments />} />
-              <Route path="/supply-chain/suppliers" element={<Suppliers />} />
+              {/* Supply Chain Routes - Protected */}
+              <Route
+                path="/supply-chain/orders"
+                element={
+                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="orders">
+                    <PurchaseOrders />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supply-chain/shipments"
+                element={
+                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="shipments">
+                    <InboundShipments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supply-chain/suppliers"
+                element={
+                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="suppliers">
+                    <Suppliers />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Admin Routes (placeholder) */}
+              {/* Admin Routes - Protected (Admin Only) */}
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedRoute requiredCategory="admin" requiredFeature="settings">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/thresholds"
+                element={
+                  <ProtectedRoute requiredCategory="admin" requiredFeature="thresholds">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute requiredCategory="admin" requiredFeature="users">
+                    <AdminUsers />
+                  </ProtectedRoute>
+                }
+              />
 
-              <Route path="/admin/settings" element={<AdminDashboard />} />
-              <Route path="/admin/thresholds" element={<AdminDashboard />} />
+              {/* Data Upload - Store Manager and above */}
+              <Route
+                path="/data/upload"
+                element={
+                  <ProtectedRoute requiredCategory="admin">
+                    <DataUpload />
+                  </ProtectedRoute>
+                }
+              />
 
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/data/upload" element={<DataUpload />} />
-
-              {/* User Routes */}
-              <Route path="/profile" element={<UserProfile />} />
-              <Route path="/notifications" element={<Notifications />} />
+              {/* User Routes - Any authenticated user */}
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute requiredCategory="notifications">
+                    <Notifications />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,0 +1,357 @@
+"""
+Data Seeding Script for IDFS
+Generates 100,000+ realistic sales records with products, stores, and inventory
+"""
+import random
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+from app.models.sales import Product, Store, SalesData, Holiday
+from app.models.inventory import StoreInventory
+
+# Product categories and names
+CATEGORIES = {
+    "Electronics": ["Laptop", "Smartphone", "Tablet", "Headphones", "Smartwatch", "Camera", "Speaker", "Monitor"],
+    "Furniture": ["Sofa", "Chair", "Desk", "Bed", "Wardrobe", "Table", "Shelf", "Cabinet"],
+    "Home & Kitchen": ["Blender", "Microwave", "Cookware", "Dishes", "Utensils", "Coffee Maker", "Mixer", "Kettle"],
+    "Clothing": ["T-Shirt", "Jeans", "Dress", "Jacket", "Shoes", "Sweater", "Shorts", "Hoodie"],
+    "Sports": ["Yoga Mat", "Dumbbells", "Bicycle", "Tennis Racket", "Basketball", "Soccer Ball", "Treadmill", "Weights"],
+    "Books": ["Fiction Novel", "Cookbook", "Biography", "Self-Help", "Textbook", "Comic", "Magazine", "Journal"],
+    "Toys": ["Action Figure", "Board Game", "Puzzle", "Doll", "Building Blocks", "RC Car", "Plush Toy", "Educational Kit"],
+    "Beauty": ["Lipstick", "Foundation", "Perfume", "Shampoo", "Moisturizer", "Face Mask", "Eye Shadow", "Nail Polish"]
+}
+
+# Store regions
+REGIONS = [
+    "North", "South", "East", "West", "Central",
+    "Northeast", "Southeast", "Northwest", "Southwest"
+]
+
+def create_products(db: Session, num_products=500):
+    """Create diverse product catalog"""
+    print(f"Creating {num_products} products...")
+    products = []
+    
+    for i in range(num_products):
+        category = random.choice(list(CATEGORIES.keys()))
+        product_name = random.choice(CATEGORIES[category])
+        sku = f"SKU-{category[:3].upper()}-{i:05d}"
+        
+        # Price varies by category
+        price_ranges = {
+            "Electronics": (299, 1999),
+            "Furniture": (199, 1499),
+            "Home & Kitchen": (29, 299),
+            "Clothing": (19, 149),
+            "Sports": (39, 599),
+            "Books": (9, 49),
+            "Toys": (14, 99),
+            "Beauty": (12, 89)
+        }
+        
+        min_price, max_price = price_ranges.get(category, (10, 100))
+        price = round(random.uniform(min_price, max_price), 2)
+        
+        product = Product(
+            sku=sku,
+            name=f"{product_name} {category}",
+            category=category,
+            price=price
+        )
+        products.append(product)
+    
+    db.bulk_save_objects(products)
+    db.commit()
+    print(f"✓ Created {num_products} products")
+    return products
+
+def create_stores(db: Session, num_stores=50):
+    """Create store locations"""
+    print(f"Creating {num_stores} stores...")
+    stores = []
+    
+    for i in range(num_stores):
+        region = random.choice(REGIONS)
+        store_id = f"STORE-{region[:3].upper()}-{i:03d}"
+        
+        store = Store(
+            store_id=store_id,
+            region=region
+        )
+        stores.append(store)
+    
+    db.bulk_save_objects(stores)
+    db.commit()
+    print(f"✓ Created {num_stores} stores")
+    return stores
+
+def create_holidays(db: Session):
+    """Create holiday calendar for 2024-2025"""
+    print("Creating holiday calendar...")
+    holidays = [
+        # 2024
+        ("2024-01-01", "Holiday", "National", "National", "New Year's Day", False),
+        ("2024-02-14", "Event", "National", "National", "Valentine's Day", False),
+        ("2024-04-01", "Event", "National", "National", "Easter", False),
+        ("2024-07-04", "Holiday", "National", "National", "Independence Day", False),
+        ("2024-10-31", "Event", "National", "National", "Halloween", False),
+        ("2024-11-28", "Holiday", "National", "National", "Thanksgiving", False),
+        ("2024-12-25", "Holiday", "National", "National", "Christmas", False),
+        ("2024-12-31", "Event", "National", "National", "New Year's Eve", False),
+        # 2025
+        ("2025-01-01", "Holiday", "National", "National", "New Year's Day", False),
+        ("2025-02-14", "Event", "National", "National", "Valentine's Day", False),
+        ("2025-04-20", "Event", "National", "National", "Easter", False),
+        ("2025-07-04", "Holiday", "National", "National", "Independence Day", False),
+        ("2025-10-31", "Event", "National", "National", "Halloween", False),
+        ("2025-11-27", "Holiday", "National", "National", "Thanksgiving", False),
+        ("2025-12-25", "Holiday", "National", "National", "Christmas", False),
+    ]
+    
+    holiday_objects = []
+    for date_str, h_type, locale, locale_name, desc, transferred in holidays:
+        holiday = Holiday(
+            date=datetime.strptime(date_str, "%Y-%m-%d").date(),
+            type=h_type,
+            locale=locale,
+            locale_name=locale_name,
+            description=desc,
+            transferred=transferred
+        )
+        holiday_objects.append(holiday)
+    
+    db.bulk_save_objects(holiday_objects)
+    db.commit()
+    print(f"✓ Created {len(holidays)} holidays")
+
+def is_holiday(date, holidays_set):
+    """Check if date is a holiday"""
+    return date in holidays_set
+
+def create_sales_data(db: Session, products, stores, num_records=100000):
+    """Generate realistic sales data with seasonality and trends"""
+    print(f"Generating {num_records} sales records...")
+    
+    # Get holidays
+    holidays = db.query(Holiday).all()
+    holiday_dates = {h.date for h in holidays}
+    
+    # Date range: Last 2 years + next 30 days for forecasting
+    end_date = datetime.now().date() + timedelta(days=30)
+    start_date = end_date - timedelta(days=730)
+    
+    sales_data = []
+    batch_size = 5000
+    
+    for i in range(num_records):
+        # Random date in range
+        days_offset = random.randint(0, (end_date - start_date).days)
+        sale_date = start_date + timedelta(days=days_offset)
+        
+        # Pick random product and store
+        product = random.choice(products)
+        store = random.choice(stores)
+        
+        # Base quantity influenced by product category
+        category_demand = {
+            "Electronics": (1, 5),
+            "Furniture": (1, 3),
+            "Home & Kitchen": (1, 8),
+            "Clothing": (1, 10),
+            "Sports": (1, 6),
+            "Books": (1, 12),
+            "Toys": (1, 8),
+            "Beauty": (1, 15)
+        }
+        
+        min_qty, max_qty = category_demand.get(product.category, (1, 5))
+        base_quantity = random.randint(min_qty, max_qty)
+        
+        # Seasonality effects
+        month = sale_date.month
+        day_of_week = sale_date.weekday()
+        
+        # Weekend boost
+        if day_of_week >= 5:  # Saturday, Sunday
+            base_quantity = int(base_quantity * random.uniform(1.2, 1.8))
+        
+        # Holiday boost
+        if is_holiday(sale_date, holiday_dates):
+            base_quantity = int(base_quantity * random.uniform(2.0, 4.0))
+            on_promotion = random.random() < 0.7  # 70% promotion during holidays
+        else:
+            on_promotion = random.random() < 0.15  # 15% normal promotion rate
+        
+        # Promotional boost
+        if on_promotion:
+            base_quantity = int(base_quantity * random.uniform(1.5, 2.5))
+        
+        # Seasonal patterns
+        if product.category == "Electronics":
+            # Black Friday / Cyber Monday effect (November)
+            if month == 11:
+                base_quantity = int(base_quantity * random.uniform(2.0, 3.0))
+        elif product.category == "Toys":
+            # Christmas season (Nov-Dec)
+            if month in [11, 12]:
+                base_quantity = int(base_quantity * random.uniform(2.5, 4.0))
+        elif product.category == "Clothing":
+            # Back to school (August-September)
+            if month in [8, 9]:
+                base_quantity = int(base_quantity * random.uniform(1.5, 2.0))
+        elif product.category == "Sports":
+            # Summer boost (May-August)
+            if month in [5, 6, 7, 8]:
+                base_quantity = int(base_quantity * random.uniform(1.3, 2.0))
+        
+        # Add some randomness
+        quantity = max(1, int(base_quantity * random.uniform(0.8, 1.3)))
+        
+        sale = SalesData(
+            date=sale_date,
+            sku_id=product.id,
+            store_id=store.id,
+            quantity=quantity,
+            onpromotion=on_promotion
+        )
+        sales_data.append(sale)
+        
+        # Bulk insert every batch_size records
+        if len(sales_data) >= batch_size:
+            db.bulk_save_objects(sales_data)
+            db.commit()
+            print(f"  → Inserted {i+1}/{num_records} sales records...")
+            sales_data = []
+    
+    # Insert remaining
+    if sales_data:
+        db.bulk_save_objects(sales_data)
+        db.commit()
+    
+    print(f"✓ Created {num_records} sales records")
+
+def create_inventory(db: Session, products, stores):
+    """Create initial inventory for all product-store combinations"""
+    print(f"Creating inventory records...")
+    
+    inventory_data = []
+    batch_size = 1000
+    count = 0
+    
+    # Not every product needs to be in every store
+    for store in stores:
+        # Each store carries 60-80% of products
+        num_products_in_store = int(len(products) * random.uniform(0.6, 0.8))
+        store_products = random.sample(products, num_products_in_store)
+        
+        for product in store_products:
+            # Base stock levels by category
+            stock_levels = {
+                "Electronics": (5, 50),
+                "Furniture": (3, 20),
+                "Home & Kitchen": (10, 100),
+                "Clothing": (20, 200),
+                "Sports": (5, 60),
+                "Books": (10, 150),
+                "Toys": (15, 120),
+                "Beauty": (20, 150)
+            }
+            
+            min_stock, max_stock = stock_levels.get(product.category, (5, 50))
+            quantity = random.randint(min_stock, max_stock)
+            
+            # Low stock threshold is typically 20-30% of max quantity
+            low_stock_threshold = int(random.uniform(0.2, 0.3) * max_stock)
+            
+            # Last restocked within last 30 days
+            days_ago = random.randint(1, 30)
+            last_restocked = datetime.now().date() - timedelta(days=days_ago)
+            
+            inventory = StoreInventory(
+                product_id=product.id,
+                store_id=store.id,
+                quantity_on_hand=quantity,
+                low_stock_threshold=low_stock_threshold,
+                last_restocked=last_restocked
+            )
+            inventory_data.append(inventory)
+            count += 1
+            
+            # Bulk insert
+            if len(inventory_data) >= batch_size:
+                db.bulk_save_objects(inventory_data)
+                db.commit()
+                print(f"  → Created {count} inventory records...")
+                inventory_data = []
+    
+    # Insert remaining
+    if inventory_data:
+        db.bulk_save_objects(inventory_data)
+        db.commit()
+    
+    print(f"✓ Created {count} inventory records")
+
+def main():
+    """Main seeding function"""
+    print("=" * 60)
+    print("IDFS Data Seeding Script")
+    print("=" * 60)
+    
+    db = SessionLocal()
+    
+    try:
+        # Clear existing data (optional - comment out to keep existing data)
+        print("\nClearing existing data...")
+        db.query(SalesData).delete()
+        db.query(StoreInventory).delete()
+        db.query(Product).delete()
+        db.query(Store).delete()
+        db.query(Holiday).delete()
+        db.commit()
+        print("✓ Cleared existing data")
+        
+        # Create base data
+        print("\n" + "=" * 60)
+        products_list = create_products(db, num_products=500)
+        
+        print("\n" + "=" * 60)
+        stores_list = create_stores(db, num_stores=50)
+        
+        print("\n" + "=" * 60)
+        create_holidays(db)
+        
+        # Refresh to get IDs
+        db.refresh(products_list[0])
+        db.refresh(stores_list[0])
+        
+        # Get all products and stores with IDs
+        products = db.query(Product).all()
+        stores = db.query(Store).all()
+        
+        # Create sales data
+        print("\n" + "=" * 60)
+        create_sales_data(db, products, stores, num_records=100000)
+        
+        # Create inventory
+        print("\n" + "=" * 60)
+        create_inventory(db, products, stores)
+        
+        print("\n" + "=" * 60)
+        print("✅ DATA SEEDING COMPLETE!")
+        print("=" * 60)
+        print(f"Summary:")
+        print(f"  • Products: {len(products)}")
+        print(f"  • Stores: {len(stores)}")
+        print(f"  • Sales Records: 100,000")
+        print(f"  • Inventory Records: ~{len(products) * len(stores) * 0.7:.0f}")
+        print("=" * 60)
+        
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    main()

@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { API_URL } from "@/lib/api";
 
 interface Notification {
   id: string;
@@ -117,7 +118,12 @@ export default function NotificationsPage() {
   const { data: apiNotifications = [], isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/dashboard/notifications");
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`${API_URL}/dashboard/notifications`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch notifications");
       return res.json();
     }

@@ -13,7 +13,7 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (token: string) => Promise<void>;
+    login: (token: string) => Promise<User | null>;
     logout: () => void;
 }
 
@@ -32,13 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await getMe();
             if (userData) {
                 setUser(userData);
+                return userData; // Return userData for immediate use
             } else {
                 setUser(null);
+                return null;
             }
         } catch (error) {
             // Keep user null if error
             console.error("Auth check failed:", error);
             setUser(null);
+            return null;
         } finally {
             setIsLoading(false);
         }
@@ -48,7 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('access_token', token);
         // Also set 'token' for backward compatibility if needed, based on Login.tsx
         localStorage.setItem('token', token);
-        await checkAuth();
+        const userData = await checkAuth();
+        return userData; // Return user data so caller can use the role immediately
     };
 
     const logout = () => {

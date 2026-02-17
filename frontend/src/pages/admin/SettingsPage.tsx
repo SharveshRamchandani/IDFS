@@ -9,15 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import {
-  IconCamera,
-  IconLock,
-  IconMail,
-  IconBell,
-  IconShieldLock,
-  IconUserPlus,
-  IconDotsVertical,
-} from "@tabler/icons-react";
+import { IconCamera, IconLock, IconMail, IconBell, IconShieldLock, IconUserPlus, IconDotsVertical } from "@tabler/icons-react";
+import { API_URL } from "@/lib/api";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -55,13 +48,13 @@ export default function SettingsPage() {
   // Fetch user data on mount
   useEffect(() => {
     const fetchUserData = async () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("access_token");
       if (!token) return;
 
       try {
-        const response = await fetch("http://localhost:5000/api/auth/me", {
+        const response = await fetch(`${API_URL}/users/me`, {
           headers: {
-            "x-auth-token": token,
+            "Authorization": `Bearer ${token}`,
           },
         });
 
@@ -100,7 +93,7 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("access_token");
 
     if (!token) {
       toast.error("You must be logged in to save settings");
@@ -122,11 +115,11 @@ export default function SettingsPage() {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/users/profile", {
+      const response = await fetch(`${API_URL}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });

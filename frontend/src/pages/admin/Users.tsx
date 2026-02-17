@@ -49,6 +49,7 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/api";
 
 
 
@@ -63,20 +64,17 @@ function UserManagement() {
   // Fetch users from backend
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/users", {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/users/`, {
         headers: {
-          "x-auth-token": token || "",
+          "Authorization": `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Filter out users with 'user' role or no role - only show users with assigned roles
-        const validUsers = data.filter((user: any) =>
-          user.role && user.role !== 'user'
-        );
-        setUsers(validUsers);
+        // Show all users regardless of role
+        setUsers(data);
       } else {
         console.error("Failed to fetch users");
       }
@@ -104,12 +102,12 @@ function UserManagement() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/users/invite", {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/users/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token || "",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
       });
@@ -140,14 +138,12 @@ function UserManagement() {
 
   const handleRoleChange = async (userId: number, newRole: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/users/${userId}/role?role=${newRole}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          "x-auth-token": token || "",
+          "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ role: newRole }),
       });
 
       const data = await response.json();
@@ -179,11 +175,11 @@ function UserManagement() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/users/${userId}`, {
         method: "DELETE",
         headers: {
-          "x-auth-token": token || "",
+          "Authorization": `Bearer ${token}`,
         },
       });
 
@@ -255,6 +251,7 @@ function UserManagement() {
                       <SelectItem value="store_manager">Store Manager</SelectItem>
                       <SelectItem value="inventory_analyst">Inventory Analyst</SelectItem>
                       <SelectItem value="staff">Warehouse Staff</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -314,6 +311,7 @@ function UserManagement() {
                     <SelectItem value="store_manager">Store Manager</SelectItem>
                     <SelectItem value="inventory_analyst">Inventory Analyst</SelectItem>
                     <SelectItem value="staff">Warehouse Staff</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
                   </SelectContent>
                 </Select>
                 <DropdownMenu>
@@ -553,7 +551,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold">Admin Access</h1>
         </div>
-            <UserManagement />          
+        <UserManagement />
       </div>
     </DashboardLayout>
   );

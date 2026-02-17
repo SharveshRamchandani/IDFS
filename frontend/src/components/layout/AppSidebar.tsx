@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMe } from "@/lib/api";
+import { hasAccess, getAllowedPages } from "@/lib/rbac";
 import {
   IconBox,
   IconChartBar,
@@ -47,35 +48,34 @@ import {
 import { IconChevronUp } from "@tabler/icons-react";
 
 const dashboardItems = [
-  { title: "Store Manager", url: "/dashboard/store", icon: IconDashboard },
-  { title: "Inventory Analyst", url: "/dashboard/analyst", icon: IconChartBar },
-  { title: "Admin / HQ", url: "/dashboard/admin", icon: IconUsers },
-  { title: "Notifications", url: "/notifications", icon: IconBell },
+  { title: "Store Manager", url: "/dashboard/store", icon: IconDashboard, feature: "store" },
+  { title: "Inventory Analyst", url: "/dashboard/analyst", icon: IconChartBar, feature: "analyst" },
+  { title: "Admin / HQ", url: "/dashboard/admin", icon: IconUsers, feature: "admin" },
 ];
 
 const inventoryItems = [
-  { title: "All Products", url: "/inventory", icon: IconPackage },
-  { title: "Low Stock", url: "/inventory/low-stock", icon: IconAlertTriangle },
-  { title: "Dead Stock", url: "/inventory/dead-stock", icon: IconBox },
+  { title: "All Products", url: "/inventory", icon: IconPackage, feature: "all" },
+  { title: "Low Stock", url: "/inventory/low-stock", icon: IconAlertTriangle, feature: "low-stock" },
+  { title: "Dead Stock", url: "/inventory/dead-stock", icon: IconBox, feature: "dead-stock" },
 ];
 
 const forecastingItems = [
-  { title: "Demand Forecast", url: "/forecasting/demand", icon: IconTrendingUp },
-  { title: "Seasonal Trends", url: "/forecasting/seasonal", icon: IconCalendar },
-  { title: "Forecast Accuracy", url: "/forecasting/accuracy", icon: IconFileAnalytics },
+  { title: "Demand Forecast", url: "/forecasting/demand", icon: IconTrendingUp, feature: "demand" },
+  { title: "Seasonal Trends", url: "/forecasting/seasonal", icon: IconCalendar, feature: "seasonal" },
+  { title: "Forecast Accuracy", url: "/forecasting/accuracy", icon: IconFileAnalytics, feature: "accuracy" },
 ];
 
 const supplyChainItems = [
-  { title: "Purchase Orders", url: "/supply-chain/orders", icon: IconShoppingCart },
-  { title: "Inbound Shipments", url: "/supply-chain/shipments", icon: IconTruck },
-  { title: "Suppliers", url: "/supply-chain/suppliers", icon: IconClipboardList },
-   { title: "Warehouse", url: "/dashboard/warehouse", icon: IconBuildingWarehouse },
+  { title: "Purchase Orders", url: "/supply-chain/orders", icon: IconShoppingCart, feature: "orders" },
+  { title: "Inbound Shipments", url: "/supply-chain/shipments", icon: IconTruck, feature: "shipments" },
+  { title: "Suppliers", url: "/supply-chain/suppliers", icon: IconClipboardList, feature: "suppliers" },
+  { title: "Warehouse", url: "/dashboard/warehouse", icon: IconBuildingWarehouse, feature: "warehouse" },
 ];
 
 const adminItems = [
-  { title: "User Management", url: "/admin/users", icon: IconUsers },
-  { title: "Settings", url: "/admin/settings", icon: IconSettings },
-  { title: "Threshold Rules", url: "/admin/thresholds", icon: IconAdjustments },
+  { title: "User Management", url: "/admin/users", icon: IconUsers, feature: "users" },
+  { title: "Settings", url: "/admin/settings", icon: IconSettings, feature: "settings" },
+  { title: "Threshold Rules", url: "/admin/thresholds", icon: IconAdjustments, feature: "thresholds" },
 ];
 
 interface User {
@@ -107,6 +107,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(path + "/");
 
+  // Filter menu items based on user role
+  const visibleDashboards = dashboardItems.filter(item => hasAccess(user?.role, "dashboards", item.feature));
+  const visibleInventory = inventoryItems.filter(item => hasAccess(user?.role, "inventory", item.feature));
+  const visibleForecasting = forecastingItems.filter(item => hasAccess(user?.role, "forecasting", item.feature));
+  const visibleSupplyChain = supplyChainItems.filter(item => hasAccess(user?.role, "supplyChain", item.feature));
+  const visibleAdmin = adminItems.filter(item => hasAccess(user?.role, "admin", item.feature));
+  const canSeeNotifications = hasAccess(user?.role, "notifications");
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-sidebar-border">
@@ -129,95 +137,115 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
-        <SidebarGroup>
-          <SidebarGroupLabel>Dashboards</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {dashboardItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleDashboards.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Dashboards</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleDashboards.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                {canSeeNotifications && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/notifications")}>
+                      <NavLink to="/notifications">
+                        <IconBell className="h-4 w-4" />
+                        <span>Notifications</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Inventory</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {inventoryItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleInventory.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Inventory</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleInventory.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Forecasting</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {forecastingItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleForecasting.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Forecasting</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleForecasting.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Supply Chain</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {supplyChainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleSupplyChain.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Supply Chain</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleSupplyChain.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Administration</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleAdmin.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleAdmin.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

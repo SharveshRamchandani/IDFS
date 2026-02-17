@@ -94,7 +94,12 @@ export default function ForecastAccuracy() {
                         <IconCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{metrics.RMSE.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">
+                            {metrics.RMSE !== undefined && metrics.RMSE !== null
+                                ? (typeof metrics.RMSE === 'number' ? metrics.RMSE.toFixed(2) : metrics.RMSE)
+                                : 'N/A'
+                            }
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             Root Mean Squared Error
                         </p>
@@ -106,7 +111,12 @@ export default function ForecastAccuracy() {
                         <IconCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{metrics.MAE.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">
+                            {metrics.MAE !== undefined && metrics.MAE !== null
+                                ? (typeof metrics.MAE === 'number' ? metrics.MAE.toFixed(2) : metrics.MAE)
+                                : 'N/A'
+                            }
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             Mean Absolute Error
                         </p>

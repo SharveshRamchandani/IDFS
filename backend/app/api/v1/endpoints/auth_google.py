@@ -57,7 +57,7 @@ def login_google(
                 email=email,
                 full_name=id_info.get("name"),
                 password=random_password,
-                role="inventory_analyst" # Default role
+                role="user"  # Default role: minimal access until admin upgrades
             )
             print("[DEBUG] Calling crud_user.create")
             try:
