@@ -159,7 +159,8 @@ def main():
     print("=" * 60)
     print("🔴 LIVE DATA SIMULATOR - IDFS")
     print("=" * 60)
-    print("This script simulates real-time data changes every 10 seconds")
+    print("This script simulates real-time data changes at RANDOM intervals")
+    print("Purchase times: Every 5-15 seconds (randomized)")
     print("Perfect for project demonstrations!")
     print("\nPress Ctrl+C to stop the simulation")
     print("=" * 60)
@@ -173,15 +174,22 @@ def main():
         iteration = 1
         
         while True:
+            # Random wait time between 5 and 15 seconds for realistic timing
+            wait_time = random.randint(5, 30)
+            
             print(f"\n🔄 Iteration #{iteration} - {datetime.now().strftime('%H:%M:%S')}")
             print("-" * 60)
             
+            # Random number of sales per iteration (30-80)
+            num_sales_this_round = random.randint(30, 80)
+            
             # Add new sales
-            num_sales = simulator.add_new_sales(num_sales=50)
+            num_sales = simulator.add_new_sales(num_sales=num_sales_this_round)
             print(f"  ✅ Added {num_sales} new sales records")
             
-            # Update inventory
-            inv_updates = simulator.update_inventory(num_updates=30)
+            # Random inventory updates (20-50)
+            num_inv_updates = random.randint(20, 50)
+            inv_updates = simulator.update_inventory(num_updates=num_inv_updates)
             print(f"  📦 Inventory updates:")
             print(f"     • Restocked: {inv_updates['restocked']} items")
             print(f"     • Sold: {inv_updates['sold']} items")
@@ -197,8 +205,8 @@ def main():
             
             iteration += 1
             
-            print(f"\n⏱️  Waiting 10 seconds before next update...")
-            time.sleep(10)
+            print(f"\n⏱️  Next update in {wait_time} seconds (randomized)...")
+            time.sleep(wait_time)
             
     except KeyboardInterrupt:
         print("\n\n" + "=" * 60)

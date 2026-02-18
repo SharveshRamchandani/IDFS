@@ -171,8 +171,20 @@ def get_forecast_accuracy(
             "status": "not_evaluated",
             "message": "Model has not been evaluated yet. Trigger training/evaluation."
         }
-        
+    
+    # Convert metrics to frontend-expected format
+    metrics_raw = forecaster.last_metrics
+    
+    # Format MAPE as percentage string
+    mape_percent = metrics_raw.get('mape', 0) * 100
+    mape_str = f"{mape_percent:.2f}%"
+    
     return {
         "status": "evaluated",
-        "metrics": forecaster.last_metrics
+        "metrics": {
+            "MAPE": mape_str,  # "16.98%"
+            "RMSE": metrics_raw.get('rmse', 0),  # 85.34
+            "MAE": metrics_raw.get('mae', 0),  # 57.32
+            "coverage": metrics_raw.get('coverage', 0)  # 0.752
+        }
     }

@@ -136,9 +136,12 @@ def create_sales_data(db: Session, products, stores, num_records=100000):
     holidays = db.query(Holiday).all()
     holiday_dates = {h.date for h in holidays}
     
-    # Date range: Last 2 years + next 30 days for forecasting
-    end_date = datetime.now().date() + timedelta(days=30)
-    start_date = end_date - timedelta(days=730)
+    # Date range: Last 2 years up to TODAY (no future dates)
+    end_date = datetime.now().date()  # TODAY - no future sales
+    start_date = end_date - timedelta(days=730)  # 2 years of history
+    
+    print(f"  Date Range: {start_date} to {end_date} (TODAY)")
+    
     
     sales_data = []
     batch_size = 5000
@@ -320,11 +323,7 @@ def main():
         print("\n" + "=" * 60)
         create_holidays(db)
         
-        # Refresh to get IDs
-        db.refresh(products_list[0])
-        db.refresh(stores_list[0])
-        
-        # Get all products and stores with IDs
+        # Get all products and stores with IDs from database
         products = db.query(Product).all()
         stores = db.query(Store).all()
         

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = "138379454132-r3t52u7nflg5tsi61r1r0ektt0f51723.apps.googleusercontent.com"
 
+    # Live Data Simulator
+    ENABLE_LIVE_SIMULATOR: bool = True
+
     class Config:
         case_sensitive = True
         env_file = ".env"
