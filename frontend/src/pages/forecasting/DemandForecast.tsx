@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconTrendingUp, IconCalendar, IconTarget, IconDownload } from "@tabler/icons-react";
+import { IconTrendingUp, IconCalendar, IconTarget, IconDownload, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -35,6 +37,11 @@ export default function DemandForecast() {
     queryFn: () => getGlobalForecast(parseInt(timeframe), false, showHistory)
   });
 
+  const { data: accuracyData, isLoading: accuracyLoading, error: accuracyError } = useQuery({
+    queryKey: ['forecast-accuracy'],
+    queryFn: forecastingApi.getAccuracy
+  });
+
   const forecastData = data?.forecast || [];
 
   // Filter for chart: If showing history, we might want to limit how far back 
@@ -46,6 +53,15 @@ export default function DemandForecast() {
   const totalDemand = forecastData
     .filter((item: any) => new Date(item.ds) > new Date()) // Only sum future
     .reduce((sum: any, item: any) => sum + (item.yhat || 0), 0);
+
+  // Accuracy metric calculations
+  const metrics = accuracyData?.metrics;
+  const mapeValue = metrics
+    ? typeof metrics.MAPE === 'string'
+      ? parseFloat(metrics.MAPE.replace('%', ''))
+      : (metrics.MAPE || 0)
+    : 0;
+  const accuracyScore = Math.max(0, Math.min(100, 100 - mapeValue));
 
   return (
     <DashboardLayout title="Demand Forecast">
@@ -197,6 +213,110 @@ export default function DemandForecast() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Forecast Accuracy Section */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Forecast Accuracy</h2>
+          {accuracyLoading ? (
+            <div className="flex h-24 items-center justify-center">
+              <p className="text-muted-foreground">Loading validation metrics...</p>
+            </div>
+          ) : accuracyError || !accuracyData ? (
+            <Alert variant="destructive">
+              <IconAlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                Failed to load accuracy metrics. {accuracyError?.message}
+              </AlertDescription>
+            </Alert>
+          ) : accuracyData.status === "not_evaluated" ? (
+            <Alert>
+              <IconAlertCircle className="h-4 w-4" />
+              <AlertTitle>Not Evaluated</AlertTitle>
+              <AlertDescription>
+                {accuracyData.message || "Model has not been validated yet."}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Model Accuracy</CardTitle>
+                    <IconCheck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{accuracyScore.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">100% - MAPE</p>
+                    <Progress value={accuracyScore} className="mt-3" />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">MAPE</CardTitle>
+                    <IconCheck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metrics?.MAPE}</div>
+                    <p className="text-xs text-muted-foreground">Mean Absolute Percentage Error</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">RMSE</CardTitle>
+                    <IconCheck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {metrics?.RMSE !== undefined && metrics?.RMSE !== null
+                        ? (typeof metrics.RMSE === 'number' ? metrics.RMSE.toFixed(2) : metrics.RMSE)
+                        : 'N/A'
+                      }
+                    </div>
+                    <p className="text-xs text-muted-foreground">Root Mean Squared Error</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">MAE</CardTitle>
+                    <IconCheck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {metrics?.MAE !== undefined && metrics?.MAE !== null
+                        ? (typeof metrics.MAE === 'number' ? metrics.MAE.toFixed(2) : metrics.MAE)
+                        : 'N/A'
+                      }
+                    </div>
+                    <p className="text-xs text-muted-foreground">Mean Absolute Error</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Evaluation Details</CardTitle>
+                  <CardDescription>
+                    Performance metrics calculated using cross-validation on historical data.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>
+                      <strong>MAPE (Mean Absolute Percentage Error):</strong> The average percentage difference between predicted and actual values. Lower is better.
+                    </p>
+                    <p>
+                      <strong>RMSE (Root Mean Squared Error):</strong> Standard deviation of the prediction errors. Penalizes large errors more heavily.
+                    </p>
+                    <p>
+                      <strong>MAE (Mean Absolute Error):</strong> The average absolute difference between predicted and actual values.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

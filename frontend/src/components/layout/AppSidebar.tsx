@@ -62,7 +62,7 @@ const inventoryItems = [
 const forecastingItems = [
   { title: "Demand Forecast", url: "/forecasting/demand", icon: IconTrendingUp, feature: "demand" },
   { title: "Seasonal Trends", url: "/forecasting/seasonal", icon: IconCalendar, feature: "seasonal" },
-  { title: "Forecast Accuracy", url: "/forecasting/accuracy", icon: IconFileAnalytics, feature: "accuracy" },
+  // { title: "Forecast Accuracy", url: "/forecasting/accuracy", icon: IconFileAnalytics, feature: "accuracy" },
 ];
 
 const supplyChainItems = [
