@@ -12,10 +12,6 @@ class SupplierCreate(BaseModel):
     contact: str
     email: str
 
-class POItem(BaseModel):
-    items: int # Mock since we don't have OrderItem model yet
-    total_amount: float
-    
 class POCreate(BaseModel):
     supplier_id: int
     po_number: str
@@ -72,9 +68,13 @@ def create_supplier(supplier_in: SupplierCreate, db: Session = Depends(deps.get_
         status="Active",
         rating=5.0
     )
-    db.add(supplier)
-    db.commit()
-    db.refresh(supplier)
+    try:
+        db.add(supplier)
+        db.commit()
+        db.refresh(supplier)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Database constraint violated: {e}")
     return {
         "id": supplier.id,
         "name": supplier.name,
@@ -109,9 +109,13 @@ def create_order(po_in: POCreate, db: Session = Depends(deps.get_db)):
         order_date=date.today(),
         status="Pending"
     )
-    db.add(po)
-    db.commit()
-    db.refresh(po)
+    try:
+        db.add(po)
+        db.commit()
+        db.refresh(po)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Database constraint violated: {e}")
     return {
         "id": po.id,
         "po_number": po.po_number,

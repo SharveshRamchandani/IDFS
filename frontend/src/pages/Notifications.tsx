@@ -28,88 +28,7 @@ interface Notification {
   isArchived: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    message: "We're pleased to inform you that a new customer has registered! Please follow up promptly by contacting.",
-    timestamp: "Just Now",
-    isRead: false,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "2",
-    message: "Hello Sales Marketing Team, We have a special offer for our customers! Enjoy a 20% discount on selected..",
-    timestamp: "30 min ago",
-    isRead: false,
-    isFavorite: true,
-    isArchived: false,
-  },
-  {
-    id: "3",
-    message: "Hello Sales Marketing Team, This is a reminder to achieve this month's sales target. Currently, we've....",
-    timestamp: "2 days ago",
-    isRead: false,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "4",
-    message: "Hello Sales Marketing Team, We've received a product information request from a potential customer.",
-    timestamp: "5 days ago",
-    isRead: false,
-    isFavorite: true,
-    isArchived: false,
-  },
-  {
-    id: "5",
-    message: "Hello Sales Marketing Team, We've received a product information request from a potential customer.",
-    timestamp: "07 Feb, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "6",
-    message: "Hello Sales Marketing Team, A meeting or presentation has been scheduled with a customer/prospect.",
-    timestamp: "01 Feb, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "7",
-    message: "Hello Sales Marketing Team, This is a reminder to review the contract or proposal currently under....",
-    timestamp: "28 Jan, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "8",
-    message: "Hello Sales Marketing Team, It's time for a follow-up with a customer after their recent purchase/meeting.",
-    timestamp: "27 Jan, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: false,
-  },
-  {
-    id: "9",
-    message: "Hello Sales Marketing Team, We've received positive feedback/testimonial from a satisfied customer...",
-    timestamp: "26 Jan, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: true,
-  },
-  {
-    id: "10",
-    message: "Hello Sales Marketing Team, This is a reminder regarding an outstanding payment from a customer......",
-    timestamp: "28 Jan, 2024",
-    isRead: true,
-    isFavorite: false,
-    isArchived: true,
-  },
-];
+
 
 export default function NotificationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -138,7 +57,7 @@ export default function NotificationsPage() {
     }
   }, [apiNotifications]);
 
-  const notifications = localNotifications.length > 0 ? localNotifications : apiNotifications;
+  const notifications = localNotifications.length > 0 ? localNotifications : (apiNotifications || []);
 
 
   const toggleFavorite = (id: string) => {

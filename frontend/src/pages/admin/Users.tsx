@@ -57,6 +57,8 @@ function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFullName, setInviteFullName] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
   const [inviteRole, setInviteRole] = useState("store_manager");
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +102,10 @@ function UserManagement() {
       toast.error("Email is required");
       return;
     }
+    if (invitePassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("access_token");
@@ -109,7 +115,12 @@ function UserManagement() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({
+          email: inviteEmail,
+          full_name: inviteFullName || undefined,
+          password: invitePassword,
+          role: inviteRole,
+        }),
       });
 
       const data = await response.json();
@@ -120,12 +131,14 @@ function UserManagement() {
         });
         setInviteDialogOpen(false);
         setInviteEmail("");
+        setInviteFullName("");
+        setInvitePassword("");
         setInviteRole("store_manager");
         // Refresh user list
         fetchUsers();
       } else {
         toast.error("Failed to create user", {
-          description: data.msg || "An error occurred",
+          description: data.detail || data.msg || "An error occurred",
         });
       }
     } catch (error) {
@@ -231,9 +244,19 @@ function UserManagement() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
+                  <Label htmlFor="invite-fullname">Full Name <span className="text-muted-foreground">(optional)</span></Label>
                   <Input
-                    id="email"
+                    id="invite-fullname"
+                    type="text"
+                    placeholder="Jane Doe"
+                    value={inviteFullName}
+                    onChange={(e) => setInviteFullName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Email address</Label>
+                  <Input
+                    id="invite-email"
                     type="email"
                     placeholder="name@yourcompany.com"
                     value={inviteEmail}
@@ -241,7 +264,17 @@ function UserManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Select role</Label>
+                  <Label htmlFor="invite-password">Password <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="invite-password"
+                    type="password"
+                    placeholder="Min. 8 characters"
+                    value={invitePassword}
+                    onChange={(e) => setInvitePassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-role">Select role</Label>
                   <Select value={inviteRole} onValueChange={setInviteRole}>
                     <SelectTrigger id="role" className="w-full">
                       <SelectValue placeholder="Select a role" />
@@ -260,7 +293,7 @@ function UserManagement() {
                 <Button
                   type="submit"
                   onClick={handleSendInvitation}
-                  disabled={!inviteEmail}
+                  disabled={!inviteEmail || invitePassword.length < 8}
                   className="w-full sm:w-auto"
                 >
                   Send Invitation

@@ -1,13 +1,20 @@
 """
 Data Seeding Script for IDFS
-Generates 100,000+ realistic sales records with products, stores, and inventory
+Generates comprehensive realistic data for all tables including Users, Supply Chain, and Forecasts.
 """
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
+
 from app.models.sales import Product, Store, SalesData, Holiday
 from app.models.inventory import StoreInventory
+from app.models.user import User, UserRole
+from app.models.forecast import Forecast
+from app.models.supply_chain import Supplier, SupplierStatus, PurchaseOrder, POStatus, Shipment, ShipmentStatus
+
+from app.crud.crud_user import create as crud_create_user
+from app.schemas.user import UserCreate
 
 # Product categories and names
 CATEGORIES = {
@@ -26,6 +33,35 @@ REGIONS = [
     "North", "South", "East", "West", "Central",
     "Northeast", "Southeast", "Northwest", "Southwest"
 ]
+
+def create_users(db: Session):
+    print("Creating users...")
+    roles_map = {
+        "admin": "admin",
+        "analyst": "inventory_analyst", 
+        "manager": "store_manager",
+        "warehouse": "staff",
+        "customer": "user"
+    }
+    
+    count = 0
+    for email_prefix, role_enum in roles_map.items():
+        email = f"{email_prefix}@demo.com"
+        
+        # Skip if user exists
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user_in = UserCreate(
+                email=email,
+                password=f"{email_prefix}123456", 
+                full_name=f"{email_prefix.capitalize()} User",
+                role=role_enum,
+                is_superuser=(role_enum == "admin")
+            )
+            crud_create_user(db, user_in)
+            count += 1
+            
+    print(f"✓ Created {count} default users")
 
 def create_products(db: Session, num_products=500):
     """Create diverse product catalog"""
@@ -128,6 +164,87 @@ def is_holiday(date, holidays_set):
     """Check if date is a holiday"""
     return date in holidays_set
 
+def create_suppliers_pos_shipments(db: Session, num_suppliers=20, num_pos=100):
+    print(f"Creating {num_suppliers} suppliers, {num_pos} purchase orders, and shipments...")
+    
+    # 1. Suppliers
+    suppliers = []
+    statuses = [SupplierStatus.ACTIVE, SupplierStatus.INACTIVE, SupplierStatus.UNDER_REVIEW]
+    company_names = ["Global Logistics", "ProGoods", "TechSupply", "Furniture Direct", "WorldWide Imports", "Prime Source"]
+    
+    for i in range(num_suppliers):
+        supplier = Supplier(
+            name=f"{random.choice(company_names)} Co {i}",
+            contact_person=f"Contact {i}",
+            email=f"contact{i}@supplier.com",
+            phone=f"555-01{i:02d}",
+            rating=round(random.uniform(2.5, 5.0), 1),
+            status=random.choice(statuses)
+        )
+        db.add(supplier)
+    db.commit()
+    
+    created_suppliers = db.query(Supplier).all()
+    
+    # 2. Purchase Orders
+    pos = []
+    po_statuses = [POStatus.PENDING, POStatus.APPROVED, POStatus.PROCESSING, POStatus.DELIVERED, POStatus.CANCELLED]
+    
+    for i in range(num_pos):
+        po = PurchaseOrder(
+            po_number=f"PO-2024-{i:05d}",
+            supplier_id=random.choice(created_suppliers).id,
+            order_date=datetime.now().date() - timedelta(days=random.randint(1, 100)),
+            total_amount=round(random.uniform(500, 50000), 2),
+            status=random.choice(po_statuses)
+        )
+        db.add(po)
+        pos.append(po)
+    db.commit()
+    
+    # 3. Shipments
+    shipment_statuses = [ShipmentStatus.PENDING, ShipmentStatus.IN_TRANSIT, ShipmentStatus.ARRIVED, ShipmentStatus.DELAYED, ShipmentStatus.CUSTOMS, ShipmentStatus.DELIVERED]
+    carriers = ["FedEx", "DHL", "UPS", "Maersk", "Evergreen"]
+    modes = ["Air", "Sea", "Land"]
+    
+    for po in pos:
+        # Generate shipments for orders not just pending or cancelled
+        if po.status in [POStatus.APPROVED, POStatus.PROCESSING, POStatus.DELIVERED]:
+            eta_date = po.order_date + timedelta(days=random.randint(5, 30))
+            shipment = Shipment(
+                tracking_number=f"TRK-{random.randint(100000, 999999)}-{po.id}",
+                origin="Guangzhou",
+                destination="New York",
+                eta=eta_date,
+                carrier=random.choice(carriers),
+                mode=random.choice(modes),
+                status=random.choice(shipment_statuses),
+                purchase_order_id=po.id
+            )
+            db.add(shipment)
+    db.commit()
+    
+    print(f"✓ Created {num_suppliers} suppliers and {num_pos} POs with their shipments")
+
+def create_forecasts(db: Session, num_records=200):
+    print(f"Creating {num_records} generic forecast records...")
+    forecasts = []
+    
+    base_date = datetime.now().date()
+    for i in range(num_records):
+        forecast_date = base_date + timedelta(days=i)
+        pred_val = random.uniform(1000, 5000)
+        forecasts.append(Forecast(
+            forecast_date=forecast_date,
+            predicted_value=pred_val,
+            lower_bound=pred_val * 0.8,
+            upper_bound=pred_val * 1.2,
+            model_version="1.0"
+        ))
+    db.bulk_save_objects(forecasts)
+    db.commit()
+    print(f"✓ Created {num_records} forecast records")
+
 def create_sales_data(db: Session, products, stores, num_records=100000):
     """Generate realistic sales data with seasonality and trends"""
     print(f"Generating {num_records} sales records...")
@@ -141,7 +258,6 @@ def create_sales_data(db: Session, products, stores, num_records=100000):
     start_date = end_date - timedelta(days=730)  # 2 years of history
     
     print(f"  Date Range: {start_date} to {end_date} (TODAY)")
-    
     
     sales_data = []
     batch_size = 5000
@@ -191,23 +307,18 @@ def create_sales_data(db: Session, products, stores, num_records=100000):
         
         # Seasonal patterns
         if product.category == "Electronics":
-            # Black Friday / Cyber Monday effect (November)
-            if month == 11:
+            if month == 11: # Black Friday
                 base_quantity = int(base_quantity * random.uniform(2.0, 3.0))
         elif product.category == "Toys":
-            # Christmas season (Nov-Dec)
-            if month in [11, 12]:
+            if month in [11, 12]: # Christmas
                 base_quantity = int(base_quantity * random.uniform(2.5, 4.0))
         elif product.category == "Clothing":
-            # Back to school (August-September)
-            if month in [8, 9]:
+            if month in [8, 9]: # Back to school
                 base_quantity = int(base_quantity * random.uniform(1.5, 2.0))
         elif product.category == "Sports":
-            # Summer boost (May-August)
-            if month in [5, 6, 7, 8]:
+            if month in [5, 6, 7, 8]: # Summer
                 base_quantity = int(base_quantity * random.uniform(1.3, 2.0))
         
-        # Add some randomness
         quantity = max(1, int(base_quantity * random.uniform(0.8, 1.3)))
         
         sale = SalesData(
@@ -219,14 +330,12 @@ def create_sales_data(db: Session, products, stores, num_records=100000):
         )
         sales_data.append(sale)
         
-        # Bulk insert every batch_size records
         if len(sales_data) >= batch_size:
             db.bulk_save_objects(sales_data)
             db.commit()
             print(f"  → Inserted {i+1}/{num_records} sales records...")
             sales_data = []
     
-    # Insert remaining
     if sales_data:
         db.bulk_save_objects(sales_data)
         db.commit()
@@ -241,14 +350,12 @@ def create_inventory(db: Session, products, stores):
     batch_size = 1000
     count = 0
     
-    # Not every product needs to be in every store
     for store in stores:
         # Each store carries 60-80% of products
         num_products_in_store = int(len(products) * random.uniform(0.6, 0.8))
         store_products = random.sample(products, num_products_in_store)
         
         for product in store_products:
-            # Base stock levels by category
             stock_levels = {
                 "Electronics": (5, 50),
                 "Furniture": (3, 20),
@@ -263,10 +370,8 @@ def create_inventory(db: Session, products, stores):
             min_stock, max_stock = stock_levels.get(product.category, (5, 50))
             quantity = random.randint(min_stock, max_stock)
             
-            # Low stock threshold is typically 20-30% of max quantity
             low_stock_threshold = int(random.uniform(0.2, 0.3) * max_stock)
             
-            # Last restocked within last 30 days
             days_ago = random.randint(1, 30)
             last_restocked = datetime.now().date() - timedelta(days=days_ago)
             
@@ -280,14 +385,12 @@ def create_inventory(db: Session, products, stores):
             inventory_data.append(inventory)
             count += 1
             
-            # Bulk insert
             if len(inventory_data) >= batch_size:
                 db.bulk_save_objects(inventory_data)
                 db.commit()
                 print(f"  → Created {count} inventory records...")
                 inventory_data = []
     
-    # Insert remaining
     if inventory_data:
         db.bulk_save_objects(inventory_data)
         db.commit()
@@ -297,7 +400,7 @@ def create_inventory(db: Session, products, stores):
 def main():
     """Main seeding function"""
     print("=" * 60)
-    print("IDFS Data Seeding Script")
+    print("IDFS Data Seeding Script (ALL TABLES)")
     print("=" * 60)
     
     db = SessionLocal()
@@ -305,15 +408,25 @@ def main():
     try:
         # Clear existing data (optional - comment out to keep existing data)
         print("\nClearing existing data...")
+        # Since of foreign key constraints, delete in a specific order:
         db.query(SalesData).delete()
         db.query(StoreInventory).delete()
         db.query(Product).delete()
         db.query(Store).delete()
         db.query(Holiday).delete()
+        db.query(Shipment).delete()
+        db.query(PurchaseOrder).delete()
+        db.query(Supplier).delete()
+        db.query(Forecast).delete()
+        # We optionally delete or leave users, let's leave users if they already exist so we don't break logins
+        # db.query(User).delete()  
         db.commit()
         print("✓ Cleared existing data")
         
         # Create base data
+        print("\n" + "=" * 60)
+        create_users(db)
+
         print("\n" + "=" * 60)
         products_list = create_products(db, num_products=500)
         
@@ -322,6 +435,12 @@ def main():
         
         print("\n" + "=" * 60)
         create_holidays(db)
+
+        print("\n" + "=" * 60)
+        create_suppliers_pos_shipments(db, num_suppliers=20, num_pos=100)
+
+        print("\n" + "=" * 60)
+        create_forecasts(db, num_records=200)
         
         # Get all products and stores with IDs from database
         products = db.query(Product).all()
@@ -339,9 +458,13 @@ def main():
         print("✅ DATA SEEDING COMPLETE!")
         print("=" * 60)
         print(f"Summary:")
+        print(f"  • Custom Users generated")
         print(f"  • Products: {len(products)}")
         print(f"  • Stores: {len(stores)}")
-        print(f"  • Sales Records: 100,000")
+        print(f"  • Suppliers: 20")
+        print(f"  • Purchase Orders: 100 (along with tracking shipments)")
+        print(f"  • Forecast Records: 200")
+        print(f"  • Sales Records: ~100,000")
         print(f"  • Inventory Records: ~{len(products) * len(stores) * 0.7:.0f}")
         print("=" * 60)
         

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PageTransition } from "@/components/PageTransition";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -36,6 +37,13 @@ import UserProfile from "./pages/UserProfile";
 import Notifications from "./pages/Notifications";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { useLowStockNotifier } from "@/hooks/useLowStockNotifier";
+
+// Inner shell so the hook can access AuthContext
+function AppShell({ children }: { children: React.ReactNode }) {
+  useLowStockNotifier();
+  return <>{children}</>;
+}
 
 
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -49,185 +57,187 @@ const App = () => (
       <Sonner />
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Redirect root to login */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+          <AppShell>
+            <BrowserRouter>
+              <Routes>
+                {/* Redirect root to login */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
 
-              {/* Auth Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                {/* Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-              {/* Dashboard Routes - Protected */}
-              <Route
-                path="/dashboard/store"
-                element={
-                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="store">
-                    <StoreManagerDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/analyst"
-                element={
-                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="analyst">
-                    <AnalystDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/warehouse"
-                element={
-                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="warehouse">
-                    <WarehouseDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/admin"
-                element={
-                  <ProtectedRoute requiredCategory="dashboards" requiredFeature="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Dashboard Routes - Protected */}
+                <Route
+                  path="/dashboard/store"
+                  element={
+                    <ProtectedRoute requiredCategory="dashboards" requiredFeature="store">
+                      <StoreManagerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/analyst"
+                  element={
+                    <ProtectedRoute requiredCategory="dashboards" requiredFeature="analyst">
+                      <AnalystDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/warehouse"
+                  element={
+                    <ProtectedRoute requiredCategory="supplyChain" requiredFeature="warehouse">
+                      <WarehouseDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/admin"
+                  element={
+                    <ProtectedRoute requiredCategory="dashboards" requiredFeature="admin">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Inventory Routes - Protected */}
-              <Route
-                path="/inventory"
-                element={
-                  <ProtectedRoute requiredCategory="inventory" requiredFeature="all">
-                    <InventoryList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/inventory/low-stock"
-                element={
-                  <ProtectedRoute requiredCategory="inventory" requiredFeature="low-stock">
-                    <LowStock />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/inventory/dead-stock"
-                element={
-                  <ProtectedRoute requiredCategory="inventory" requiredFeature="dead-stock">
-                    <DeadStock />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Inventory Routes - Protected */}
+                <Route
+                  path="/inventory"
+                  element={
+                    <ProtectedRoute requiredCategory="inventory" requiredFeature="all">
+                      <InventoryList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventory/low-stock"
+                  element={
+                    <ProtectedRoute requiredCategory="inventory" requiredFeature="low-stock">
+                      <LowStock />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventory/dead-stock"
+                  element={
+                    <ProtectedRoute requiredCategory="inventory" requiredFeature="dead-stock">
+                      <DeadStock />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Forecasting Routes - Protected */}
-              <Route
-                path="/forecasting/demand"
-                element={
-                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="demand">
-                    <DemandForecast />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/forecasting/seasonal"
-                element={
-                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="seasonal">
-                    <SeasonalForecast />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/forecasting/accuracy"
-                element={
-                  <ProtectedRoute requiredCategory="forecasting" requiredFeature="accuracy">
-                    <ForecastAccuracy />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Forecasting Routes - Protected */}
+                <Route
+                  path="/forecasting/demand"
+                  element={
+                    <ProtectedRoute requiredCategory="forecasting" requiredFeature="demand">
+                      <DemandForecast />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/forecasting/seasonal"
+                  element={
+                    <ProtectedRoute requiredCategory="forecasting" requiredFeature="seasonal">
+                      <SeasonalForecast />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/forecasting/accuracy"
+                  element={
+                    <ProtectedRoute requiredCategory="forecasting" requiredFeature="accuracy">
+                      <ForecastAccuracy />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Supply Chain Routes - Protected */}
-              <Route
-                path="/supply-chain/orders"
-                element={
-                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="orders">
-                    <PurchaseOrders />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/supply-chain/shipments"
-                element={
-                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="shipments">
-                    <InboundShipments />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/supply-chain/suppliers"
-                element={
-                  <ProtectedRoute requiredCategory="supplyChain" requiredFeature="suppliers">
-                    <Suppliers />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Supply Chain Routes - Protected */}
+                <Route
+                  path="/supply-chain/orders"
+                  element={
+                    <ProtectedRoute requiredCategory="supplyChain" requiredFeature="orders">
+                      <PurchaseOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/supply-chain/shipments"
+                  element={
+                    <ProtectedRoute requiredCategory="supplyChain" requiredFeature="shipments">
+                      <InboundShipments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/supply-chain/suppliers"
+                  element={
+                    <ProtectedRoute requiredCategory="supplyChain" requiredFeature="suppliers">
+                      <Suppliers />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Admin Routes - Protected (Admin Only) */}
-              <Route
-                path="/admin/settings"
-                element={
-                  <ProtectedRoute requiredCategory="admin" requiredFeature="settings">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/thresholds"
-                element={
-                  <ProtectedRoute requiredCategory="admin" requiredFeature="thresholds">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <ProtectedRoute requiredCategory="admin" requiredFeature="users">
-                    <AdminUsers />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Admin Routes - Protected (Admin Only) */}
+                <Route
+                  path="/admin/settings"
+                  element={
+                    <ProtectedRoute requiredCategory="admin" requiredFeature="settings">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/thresholds"
+                  element={
+                    <ProtectedRoute requiredCategory="admin" requiredFeature="thresholds">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <ProtectedRoute requiredCategory="admin" requiredFeature="users">
+                      <AdminUsers />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Data Upload - Store Manager and above */}
-              <Route
-                path="/data/upload"
-                element={
-                  <ProtectedRoute requiredCategory="admin">
-                    <DataUpload />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Data Upload - Store Manager and above */}
+                <Route
+                  path="/data/upload"
+                  element={
+                    <ProtectedRoute requiredCategory="admin">
+                      <DataUpload />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* User Routes - Any authenticated user */}
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <UserProfile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/notifications"
-                element={
-                  <ProtectedRoute requiredCategory="notifications">
-                    <Notifications />
-                  </ProtectedRoute>
-                }
-              />
+                {/* User Routes - Any authenticated user */}
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <UserProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute requiredCategory="notifications">
+                      <Notifications />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </BrowserRouter>
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </AppShell>
         </AuthProvider>
       </ThemeProvider>
     </TooltipProvider>

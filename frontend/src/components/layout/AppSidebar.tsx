@@ -136,7 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="scrollbar-thin">
+      <SidebarContent className="no-scrollbar overflow-y-auto">
         {visibleDashboards.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Dashboards</SidebarGroupLabel>

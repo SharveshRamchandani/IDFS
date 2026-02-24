@@ -28,6 +28,9 @@ export default function Suppliers() {
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
 
+    const [selectedSupplier, setSelectedSupplier] = useState<any | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+
     // New Supplier State
     const [newSupplier, setNewSupplier] = useState({
         name: "",
@@ -189,7 +192,16 @@ export default function Suppliers() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm">Edit</Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedSupplier(supplier);
+                                                        setDetailsOpen(true);
+                                                    }}
+                                                >
+                                                    Details
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -198,6 +210,49 @@ export default function Suppliers() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                {/* Details Dialog */}
+                <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Supplier Details</DialogTitle>
+                            <DialogDescription>Detailed view of supplier info</DialogDescription>
+                        </DialogHeader>
+                        {selectedSupplier && (
+                            <div className="space-y-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <span className="text-sm text-muted-foreground">Supplier Name</span>
+                                        <p className="font-medium">{selectedSupplier.name}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-sm text-muted-foreground">Status</span>
+                                        <div>
+                                            <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                                {selectedSupplier.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-sm text-muted-foreground">Contact Person</span>
+                                        <p className="font-medium">{selectedSupplier.contact}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-sm text-muted-foreground">Email</span>
+                                        <p className="font-medium">{selectedSupplier.email}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-sm text-muted-foreground">Rating</span>
+                                        <div className="flex items-center font-medium">
+                                            <Star className="h-4 w-4 text-warning fill-current mr-1" />
+                                            {selectedSupplier.rating} / 5.0
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </DashboardLayout>
     );

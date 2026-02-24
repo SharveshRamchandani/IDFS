@@ -5,6 +5,8 @@ from app.api import deps
 from app.crud import crud_sales
 import numpy as np
 import pandas as pd
+import json
+import os
 
 from app import models
 
@@ -19,19 +21,32 @@ def get_model_metrics(
     Evaluate the performance of the current forecasting logic.
     Calculates accuracy metrics on a subset of recent data.
     """
-    # 1. Fetch a sample of data (e.g., last 100 records)
-    sales_data = crud_sales.get_sales_by_sku_store(db, sku="mock_sku", store_id="mock_store")
-    
-    # Since we can't run a full eval on the whole DB on every request, 
-    # we return placeholder metrics or calculate stats on the specific sample if it exists.
+    metrics_file = "prophet_model_metrics.json"
+    if os.path.exists(metrics_file):
+        with open(metrics_file, "r") as f:
+            metrics_raw = json.load(f)
+            
+        mape_percent = metrics_raw.get('mape', 0) * 100
+        accuracy = max(0, 100 - mape_percent)
+        
+        return {
+            "model_status": "Active",
+            "last_training_date": "Recent",
+            "metrics": {
+                "MAPE": f"{mape_percent:.2f}%",
+                "RMSE": round(metrics_raw.get('rmse', 0), 2),
+                "Accuracy": f"{accuracy:.2f}%"
+            },
+            "description": "Metrics based on Facebook Prophet validation."
+        }
     
     return {
         "model_status": "Active",
-        "last_training_date": "2023-10-27", # Mock
+        "last_training_date": "N/A",
         "metrics": {
-            "MAPE": "12.5%",    # Mean Absolute Percentage Error
-            "RMSE": 45.2,       # Root Mean Square Error
-            "Accuracy": "87.5%"
+            "MAPE": "N/A",
+            "RMSE": 0,
+            "Accuracy": "N/A"
         },
-        "description": "Metrics based on standard Exponential Smoothing validation."
+        "description": "Metrics not available. Please train the model."
     }

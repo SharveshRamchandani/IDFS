@@ -4,6 +4,9 @@ from app.api import deps
 from app.crud import crud_sales
 
 from app import models
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -17,41 +20,46 @@ def read_dashboard(
     try:
         total_products = crud_sales.get_total_products_count(db) or 0
     except Exception as e:
-        print(f"Error fetching product count: {e}")
+        logger.error(f"Error fetching product count: {e}")
         total_products = 0
 
     try:
         total_stores = crud_sales.get_total_stores_count(db) or 0
-    except:
-            total_stores = 0
+    except Exception as e:
+        logger.error(f"Error fetching total_stores count: {e}")
+        total_stores = 0
 
     try:
         total_sales = crud_sales.get_total_sales_count(db) or 0
-    except:
-            total_sales = 0
+    except Exception as e:
+        logger.error(f"Error fetching total_sales count: {e}")
+        total_sales = 0
     
     # Advanced Stats
     try:
         revenue = crud_sales.get_total_revenue(db) or 0.0
     except Exception as e:
-            print(f"Error fetching revenue: {e}")
-            revenue = 0.0
+        logger.error(f"Error fetching revenue: {e}")
+        revenue = 0.0
             
     try:
         total_qty = crud_sales.get_total_quantity(db) or 0
-    except:
-            total_qty = 0
+    except Exception as e:
+        logger.error(f"Error fetching total_qty: {e}")
+        total_qty = 0
             
     try:
         avg_daily = crud_sales.get_avg_daily_sales(db) or 0.0
-    except:
-            avg_daily = 0.0
+    except Exception as e:
+        logger.error(f"Error fetching avg_daily: {e}")
+        avg_daily = 0.0
     
     recent_sales = []
     try:
         recent_sales = crud_sales.get_recent_sales(db, limit=5)
-    except:
-            pass
+    except Exception as e:
+        logger.error(f"Error fetching recent_sales: {e}")
+        pass
     
     top_stores = []
     try:
@@ -62,7 +70,7 @@ def read_dashboard(
             for r in top_stores_raw
         ]
     except Exception as e:
-        print(f"Error fetching top stores: {e}")
+        logger.error(f"Error fetching top stores: {e}")
         top_stores = []
 
     return {
@@ -95,5 +103,45 @@ def get_daily_trend(
         ]
         return result
     except Exception as e:
-        print(f"Error fetching trend: {e}")
+        logger.error(f"Error fetching trend: {e}")
         return []
+
+@router.get("/notifications")
+def get_dashboard_notifications(
+    current_user: models.user.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(deps.get_db)
+):
+    """
+    Get system notifications for dashboard.
+    """
+    notifications = []
+    
+    try:
+        total_sales = crud_sales.get_total_sales_count(db)
+        if total_sales == 0:
+            notifications.append({
+                "id": "1",
+                "message": "System is empty. Please upload sales data via the Ingestion module.",
+                "timestamp": "Just Now",
+                "isRead": False,
+                "isFavorite": False,
+                "isArchived": False
+            })
+            
+        recent_sales = crud_sales.get_recent_sales(db, limit=100)
+        if recent_sales:
+            active_store_ids = {s.store_id for s in recent_sales}
+            if len(active_store_ids) < 5:
+                notifications.append({
+                    "id": "2",
+                    "message": "Low store activity detected. Some stores have not reported data recently.",
+                    "timestamp": "Just Now",
+                    "isRead": False,
+                    "isFavorite": False,
+                    "isArchived": False
+                })
+    except Exception as e:
+        logger.error(f"Error generating notifications: {e}")
+
+    return notifications
+
