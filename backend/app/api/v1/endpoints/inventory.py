@@ -107,6 +107,11 @@ def create_product(item_in: ProductCreate, db: Session = Depends(deps.get_db)):
     elif inventory.quantity_on_hand < inventory.low_stock_threshold:
         status = "low-stock"
 
+    # Refresh relationships to get the actual store details
+    db.refresh(inventory)
+    store = db.query(models.Store).filter(models.Store.id == item_in.store_id).first()
+    location = f"{store.region} - {store.store_id}" if store else "Unknown"
+
     return {
         "id": inventory.id,
         "product_name": product.name or f"{product.category} Item",
@@ -115,7 +120,7 @@ def create_product(item_in: ProductCreate, db: Session = Depends(deps.get_db)):
         "availableStock": inventory.quantity_on_hand,
         "threshold": inventory.low_stock_threshold,
         "status": status,
-        "location": "Assigned Store", # Simplified
+        "location": location,
         "lastUpdated": str(inventory.last_restocked)
     }
 

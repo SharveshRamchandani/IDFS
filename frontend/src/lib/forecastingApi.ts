@@ -5,6 +5,7 @@ export interface ForecastData {
     yhat: number;
     yhat_lower: number;
     yhat_upper: number;
+    y?: number; // actual historical value, present for past dates
 }
 
 export interface DemandForecastResponse {

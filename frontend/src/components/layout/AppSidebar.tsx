@@ -57,7 +57,9 @@ const inventoryItems = [
   { title: "All Products", url: "/inventory", icon: IconPackage, feature: "all" },
   { title: "Low Stock", url: "/inventory/low-stock", icon: IconAlertTriangle, feature: "low-stock" },
   { title: "Dead Stock", url: "/inventory/dead-stock", icon: IconBox, feature: "dead-stock" },
+  { title: "Sales Explorer", url: "/sales/explorer", icon: IconCalendar, feature: "all" },
 ];
+
 
 const forecastingItems = [
   { title: "Demand Forecast", url: "/forecasting/demand", icon: IconTrendingUp, feature: "demand" },

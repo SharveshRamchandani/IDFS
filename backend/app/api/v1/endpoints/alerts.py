@@ -1,9 +1,10 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.api import deps
 from app.crud import crud_sales
-import pandas as pd
+from datetime import date, timedelta
 
 from app import models
 
@@ -21,22 +22,32 @@ def get_alerts(
     2. Zero-sales anomalies.
     """
     alerts = []
-    
-    # 1. Check for "Quiet Stores" (No sales in recent batch)
-    # This is a simple heuristic: if a store exists but isn't in recent_sales, flag it.
-    
-    # Get all active stores (just ids)
-    # Note: In a real app we'd query this more efficiently with a LEFT JOIN where sales is NULL
-    recent_sales = crud_sales.get_recent_sales(db, limit=100)
-    if recent_sales:
-        active_store_ids = {s.store_id for s in recent_sales}
-        # This is a mock logical check for demonstration where we'd compare against all stores
-        if len(active_store_ids) < 5: # Arbitrary threshold
-             alerts.append({
-                "type": "warning",
-                "message": "Low store activity detected. Some stores have not reported data recently.",
-                "severity": "medium"
-            })
+    cutoff_date = date.today() - timedelta(days=7)
+
+    # 1. Find stores with NO sales in the last 7 days using a real database query.
+    # Fetch all store IDs that exist in the system.
+    all_store_ids = {s.id for s in db.query(models.Store.id).all()}
+
+    # Fetch store IDs that DO have at least one sale record in the last 7 days.
+    active_store_ids = {
+        row.store_id
+        for row in db.query(models.SalesData.store_id)
+        .filter(models.SalesData.date >= cutoff_date)
+        .distinct()
+        .all()
+    }
+
+    # Inactive stores = all stores minus active stores
+    inactive_store_ids = all_store_ids - active_store_ids
+
+    if inactive_store_ids and len(all_store_ids) > 0:
+        inactive_count = len(inactive_store_ids)
+        total_count = len(all_store_ids)
+        alerts.append({
+            "type": "warning",
+            "message": f"{inactive_count} of {total_count} store(s) have not reported any sales in the last 7 days.",
+            "severity": "medium"
+        })
 
     # 2. Check for Data Quality
     total_sales = crud_sales.get_total_sales_count(db)

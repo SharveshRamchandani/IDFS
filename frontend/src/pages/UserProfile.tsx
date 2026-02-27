@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { getMe, updateMe } from "@/lib/api";
 import { toast } from "sonner";
+import { IconCalendar, IconClock } from "@tabler/icons-react";
 import {
     Dialog,
     DialogContent,
@@ -17,12 +18,19 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 
+function formatDateTime(isoString: string | null | undefined): string {
+    if (!isoString) return "Never";
+    return new Date(isoString).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
+}
+
 export default function UserProfile() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
 
-    // Form state
     const [formData, setFormData] = useState({
         full_name: "",
         email: "",
@@ -83,6 +91,8 @@ export default function UserProfile() {
     return (
         <DashboardLayout title="My Profile">
             <div className="max-w-2xl mx-auto space-y-6">
+
+                {/* Profile Card */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Profile Information</CardTitle>
@@ -158,6 +168,30 @@ export default function UserProfile() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Account Activity card — shows DB-stored timestamps */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Account Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
+                            <IconCalendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div>
+                                <p className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Member Since</p>
+                                <p className="font-medium">{formatDateTime(user.created_at)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                            <IconClock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div>
+                                <p className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Last Login</p>
+                                <p className="font-medium">{formatDateTime(user.last_login)}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
             </div>
         </DashboardLayout>
     );

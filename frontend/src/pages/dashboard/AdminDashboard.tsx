@@ -1,34 +1,26 @@
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconBuilding, IconUsers, IconAlertTriangle, IconTrendingUp } from "@tabler/icons-react";
+import { IconBuilding, IconUsers, IconAlertTriangle, IconTrendingUp, IconDownload } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { exportToCSV } from "@/lib/exportCsv";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
-  Cell
+  ResponsiveContainer,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats } from "@/lib/api";
 import { IconLoader2 } from "@tabler/icons-react";
 
-const severityStyles: Record<string, string> = {
-  critical: "bg-destructive/10 text-destructive border-destructive/20",
-  warning: "bg-warning/10 text-warning-foreground border-warning/20",
-  info: "bg-info/10 text-info border-info/20",
-};
-
 export default function AdminDashboard() {
   const { data: stats, isLoading, error } = useQuery({
-    queryKey: ['dashboardStats'],
+    queryKey: ["dashboardStats"],
     queryFn: getDashboardStats,
-    refetchInterval: 30000 // Refresh every 30s
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
@@ -56,33 +48,60 @@ export default function AdminDashboard() {
       title: "Total Stores",
       value: stats?.summary?.total_stores || 0,
       icon: IconBuilding,
-      description: "Active locations"
+      description: "Active locations",
     },
     {
       title: "Total Products",
       value: stats?.summary?.total_products || 0,
-      icon: IconUsers, // Using broadly as 'items'
-      description: "SKUs in catalog"
+      icon: IconUsers,
+      description: "SKUs in catalog",
     },
     {
       title: "Total Sales Records",
       value: (stats?.summary?.total_sales_records || 0).toLocaleString(),
       icon: IconTrendingUp,
-      description: "Historical data points"
+      description: "Historical data points",
     },
     {
       title: "Avg Daily Sales",
-      value: Math.round(stats?.avg_daily_sales || 0),
-      icon: IconAlertTriangle, // Placeholder icon
-      description: "Units per day"
+      value: Math.round(stats?.avg_daily_sales || 0).toLocaleString(),
+      icon: IconAlertTriangle,
+      description: "Units per day",
     },
   ];
 
-  const topStores = stats?.top_stores || [];
+  const topStores: any[] = stats?.top_stores || [];
+  const isQty = topStores[0]?.metric === "quantity";
+  const grandTotal = topStores.reduce((s, r) => s + (r.revenue ?? 0), 0);
 
   return (
     <DashboardLayout title="Admin / HQ Dashboard">
       <div className="space-y-6">
+
+        {/* Export bar */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" disabled={!stats} onClick={() =>
+            exportToCSV("admin_top_stores", topStores.map((s) => ({
+              "Store ID": s.store_id,
+              Region: s.region,
+              [isQty ? "Units Sold" : "Revenue"]: s.revenue,
+              "% of Total": grandTotal > 0 ? `${((s.revenue / grandTotal) * 100).toFixed(1)}%` : "—",
+            })))
+          }>
+            <IconDownload className="mr-2 h-4 w-4" /> Export Top Stores
+          </Button>
+          <Button variant="outline" size="sm" disabled={!stats?.recent_sales?.length} onClick={() =>
+            exportToCSV("admin_recent_sales", (stats?.recent_sales ?? []).map((s: any) => ({
+              Date: s.date,
+              SKU: s.sku,
+              Store: s.store_id,
+              Quantity: s.quantity,
+            })))
+          }>
+            <IconDownload className="mr-2 h-4 w-4" /> Export Recent Sales
+          </Button>
+        </div>
+
         {/* System Stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {systemStats.map((stat) => (
@@ -99,54 +118,104 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Regional Performance */}
+        {/* Charts row */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+          {/* ── Donut pie: store contribution ── */}
           <Card>
             <CardHeader>
-              <CardTitle>Top Stores by Revenue</CardTitle>
-              <CardDescription>Highest performing locations</CardDescription>
+              <CardTitle>Store Sales Contribution</CardTitle>
+              <CardDescription>
+                {topStores.length === 0
+                  ? "No store data available"
+                  : isQty
+                    ? `Total: ${grandTotal.toLocaleString()} units sold across all stores`
+                    : `Total: $${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} gross revenue`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topStores} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis
-                      dataKey="store_id"
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `$${value / 1000}k`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
-                    />
-                    <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                      {topStores.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={`hsl(var(--chart-${(index % 5) + 1}))`}
+              {topStores.length === 0 ? (
+                <div className="flex h-[300px] items-center justify-center text-muted-foreground text-sm">
+                  No store data available.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {/* Donut */}
+                  <div className="h-[210px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={topStores}
+                          dataKey="revenue"
+                          nameKey="store_id"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="52%"
+                          outerRadius="78%"
+                          paddingAngle={3}
+                          strokeWidth={0}
+                        >
+                          {topStores.map((_: any, i: number) => (
+                            <Cell key={i} fill={`hsl(var(--chart-${(i % 5) + 1}))`} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                          formatter={(value: number, _: any, props: any) => [
+                            `${isQty
+                              ? value.toLocaleString() + " units"
+                              : "$" + value.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                            }  (${((value / grandTotal) * 100).toFixed(1)}%)`,
+                            props.payload.store_id,
+                          ]}
                         />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Legend table */}
+                  <div className="space-y-2 px-1">
+                    {topStores.map((store: any, i: number) => {
+                      const pct = grandTotal > 0
+                        ? ((store.revenue / grandTotal) * 100).toFixed(1)
+                        : "0.0";
+                      return (
+                        <div key={store.store_id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ background: `hsl(var(--chart-${(i % 5) + 1}))` }}
+                            />
+                            <span className="font-medium">{store.store_id}</span>
+                            {store.region && (
+                              <span className="text-muted-foreground text-xs truncate">({store.region})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-muted-foreground tabular-nums text-xs">
+                              {isQty
+                                ? store.revenue.toLocaleString() + " u"
+                                : `$${store.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                            </span>
+                            <Badge variant="outline" className="text-xs w-16 justify-center font-mono">
+                              {pct}%
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* ── Recent Sales Activity ── */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Sales Activity</CardTitle>
@@ -154,7 +223,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats?.recent_sales?.map((sale, index) => (
+                {stats?.recent_sales?.map((sale: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-4 rounded-lg border bg-card/50">
                     <div>
                       <p className="font-medium">{sale.sku}</p>
@@ -174,6 +243,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
+
         </div>
       </div>
     </DashboardLayout>

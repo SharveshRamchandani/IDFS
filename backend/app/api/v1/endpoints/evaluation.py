@@ -25,13 +25,17 @@ def get_model_metrics(
     if os.path.exists(metrics_file):
         with open(metrics_file, "r") as f:
             metrics_raw = json.load(f)
-            
+
+        # Read actual last-modified timestamp of the metrics file as training date
+        from datetime import datetime
+        last_trained = datetime.fromtimestamp(os.path.getmtime(metrics_file)).strftime("%Y-%m-%d %H:%M:%S")
+
         mape_percent = metrics_raw.get('mape', 0) * 100
         accuracy = max(0, 100 - mape_percent)
         
         return {
             "model_status": "Active",
-            "last_training_date": "Recent",
+            "last_training_date": last_trained,
             "metrics": {
                 "MAPE": f"{mape_percent:.2f}%",
                 "RMSE": round(metrics_raw.get('rmse', 0), 2),

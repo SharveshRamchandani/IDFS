@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { IconBox, IconTrash, IconTag, IconPackage } from "@tabler/icons-react";
+import { IconBox, IconTrash, IconTag, IconPackage, IconDownload } from "@tabler/icons-react";
+import { exportToCSV } from "@/lib/exportCsv";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,19 @@ export default function DeadStock() {
               <CardDescription>Products with no or minimal movement over extended periods</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={() => exportToCSV("dead_stock", deadStockItems.map(i => ({
+                SKU: i.sku,
+                Product: i.name,
+                Category: i.category,
+                Quantity: i.quantity,
+                "Last Sold": i.lastSold,
+                "Days Without Sale": i.daysWithoutSale,
+                "Tied-up Value ($)": i.value,
+                Recommendation: recommendationLabels[i.recommendation],
+              })))} disabled={deadStockItems.length === 0}>
+                <IconDownload className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
               <Button variant="outline">
                 <IconTag className="mr-2 h-4 w-4" />
                 Create Promotion

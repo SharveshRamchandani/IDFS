@@ -1,4 +1,4 @@
-import { IconBell, IconSearch } from "@tabler/icons-react";
+import { IconBell, IconSearch, IconClock } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -13,9 +13,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useEffect, useState } from "react";
 
 interface SiteHeaderProps {
   title?: string;
+}
+
+function LiveClock() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const dateStr = now.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const timeStr = now.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  return (
+    <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground select-none tabular-nums border rounded-md px-2.5 py-1.5 bg-muted/40">
+      <IconClock className="h-3.5 w-3.5 shrink-0" />
+      <span className="font-medium text-foreground/80">{dateStr}</span>
+      <span className="opacity-40">·</span>
+      <span className="font-mono font-semibold text-foreground">{timeStr}</span>
+    </div>
+  );
 }
 
 export function SiteHeader({ title = "Dashboard" }: SiteHeaderProps) {
@@ -27,12 +59,15 @@ export function SiteHeader({ title = "Dashboard" }: SiteHeaderProps) {
         <h1 className="text-lg font-semibold">{title}</h1>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Live date + time clock */}
+          <LiveClock />
+
           <div className="relative hidden md:block">
             <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search products, orders..."
-              className="h-9 w-64 pl-9 bg-muted/50"
+              className="h-9 w-56 pl-9 bg-muted/50"
             />
           </div>
 

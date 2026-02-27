@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
@@ -71,6 +71,10 @@ def login_google(
         if not user.is_active:
              print("[!] Inactive user")
              raise HTTPException(status_code=400, detail="Inactive user")
+
+        # Stamp the login timestamp
+        user.last_login = datetime.now(timezone.utc)
+        db.commit()
 
         # Create our access token
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

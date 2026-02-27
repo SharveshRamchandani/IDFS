@@ -23,6 +23,7 @@ import DataUpload from "./pages/DataUpload";
 import InventoryList from "./pages/inventory/InventoryList";
 import LowStock from "./pages/inventory/LowStock";
 import DeadStock from "./pages/inventory/DeadStock";
+import SalesByDate from "./pages/sales/SalesByDate";
 
 // Forecasting Pages
 import DemandForecast from "./pages/forecasting/DemandForecast";
@@ -123,6 +124,14 @@ const App = () => (
                   element={
                     <ProtectedRoute requiredCategory="inventory" requiredFeature="dead-stock">
                       <DeadStock />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sales/explorer"
+                  element={
+                    <ProtectedRoute requiredCategory="inventory" requiredFeature="all">
+                      <SalesByDate />
                     </ProtectedRoute>
                   }
                 />

@@ -38,8 +38,9 @@ import {
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { forecastingApi } from "@/lib/forecastingApi";
-import { getGlobalForecast } from "@/lib/api";
+import { getGlobalForecast, getSalesDates } from "@/lib/api";
 import { DateRange } from "react-day-picker";
+import { exportToCSV } from "@/lib/exportCsv";
 
 type SeasonalView = "overall" | "week" | "month";
 
@@ -108,12 +109,18 @@ export default function DemandForecast() {
   // ── All raw forecast rows ──────────────────────────────────────────────
   const allForecast: any[] = data?.forecast ?? [];
 
-  // ── Dates that have real sales data (y > 0) — used to render dots ─────
+  // ── Fetch actual sales dates directly from the DB (not from the ML model)
+  // This always reflects live data, regardless of the ML training cutoff.
+  const { data: salesDatesRaw } = useQuery({
+    queryKey: ["sales-dates"],
+    queryFn: getSalesDates,
+    staleTime: 60_000, // Re-fetch every minute
+  });
+
   const salesDates = useMemo<Date[]>(() => {
-    return allForecast
-      .filter((r) => r.y != null && r.y > 0)
-      .map((r) => new Date(r.ds));
-  }, [allForecast]);
+    if (!salesDatesRaw) return [];
+    return salesDatesRaw.map((d) => new Date(d + "T00:00:00"));
+  }, [salesDatesRaw]);
 
   // ── Effective viewing window ───────────────────────────────────────────
   const effectiveRange = useMemo<{ from: Date; to: Date }>(() => {
@@ -284,7 +291,15 @@ export default function DemandForecast() {
               </Select>
             )}
 
-            <Button variant="outline">
+            <Button variant="outline" onClick={() =>
+              exportToCSV("demand_forecast", chartData.map((r: any) => ({
+                Date: r.ds,
+                Forecast: r.yhat != null ? Math.round(r.yhat) : "",
+                "Actual Sales": r.y != null ? Math.round(r.y) : "",
+                "Upper Bound": r.yhat_upper != null ? Math.round(r.yhat_upper) : "",
+                "Lower Bound": r.yhat_lower != null ? Math.round(r.yhat_lower) : "",
+              })))
+            } disabled={chartData.length === 0}>
               <IconDownload className="mr-2 h-4 w-4" />
               Export
             </Button>

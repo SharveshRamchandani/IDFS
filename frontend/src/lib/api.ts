@@ -221,9 +221,11 @@ export async function getMe() {
 }
 
 // Inventory API
-export async function getInventory() {
+export async function getInventory(search?: string) {
     const token = localStorage.getItem('access_token');
-    const response = await fetch(`${API_URL}/inventory/`, {
+    const params = new URLSearchParams({ limit: "500" });
+    if (search) params.set('search', search);
+    const response = await fetch(`${API_URL}/inventory/?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) throw new Error('Failed to get inventory');
@@ -345,5 +347,43 @@ export async function updateMe(updates: any) {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) throw new Error('Failed to update profile');
+    return response.json();
+}
+
+
+/**
+ * Fetch all distinct dates that have sales records in the DB.
+ * Used by the calendar to show blue dots on days with real data.
+ * This always reflects the live database — not the ML model's training cutoff.
+ */
+export async function getSalesDates(): Promise<string[]> {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_URL}/dashboard/sales-dates`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.dates ?? [];
+}
+
+export async function getSalesByDate(params: {
+    date: string;
+    store_id?: string;
+    sku?: string;
+    category?: string;
+    onpromotion?: boolean | null;
+}) {
+    const token = localStorage.getItem('access_token');
+    const query = new URLSearchParams({ date: params.date });
+    if (params.store_id) query.set('store_id', params.store_id);
+    if (params.sku) query.set('sku', params.sku);
+    if (params.category) query.set('category', params.category);
+    if (params.onpromotion !== null && params.onpromotion !== undefined)
+        query.set('onpromotion', String(params.onpromotion));
+
+    const response = await fetch(`${API_URL}/dashboard/sales-by-date?${query.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch sales data');
     return response.json();
 }

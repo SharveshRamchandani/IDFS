@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -28,6 +28,10 @@ def login_access_token(
     if not user.is_active:
          raise HTTPException(status_code=400, detail="Inactive user")
          
+    # Stamp the login timestamp
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(

@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, Calendar, Plus, MapPin, Banknote } from "lucide-react";
+import { Package, Truck, Calendar, Plus, MapPin, Banknote, Search, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrackingTimeline } from "@/components/TrackingTimeline";
+import { exportToCSV } from "@/lib/exportCsv";
 import { getOrders, createOrder, getSuppliers } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -13,8 +16,6 @@ import {
     DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
 const ORDER_STAGES = [
@@ -97,6 +98,22 @@ const PurchaseOrders = () => {
         supplier_id: "",
         total_amount: 0
     });
+
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+
+    const filteredOrders = useMemo(() =>
+        orders.filter(o => {
+            const q = search.toLowerCase();
+            const matchSearch = !q ||
+                o.po_number?.toLowerCase().includes(q) ||
+                o.supplier_name?.toLowerCase().includes(q);
+            const matchStatus = statusFilter === "all" || o.status === statusFilter;
+            return matchSearch && matchStatus;
+        }),
+        [orders, search, statusFilter]
+    );
+
 
     const fetchData = async () => {
         setLoading(true);
@@ -217,8 +234,50 @@ const PurchaseOrders = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Recent Purchase Orders</CardTitle>
-                        <CardDescription>Manage your procurement and supplier orders.</CardDescription>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <CardTitle>Recent Purchase Orders</CardTitle>
+                                <CardDescription>Manage your procurement and supplier orders.</CardDescription>
+                            </div>
+                            <Button
+                                variant="outline" size="sm"
+                                className="gap-1.5"
+                                onClick={() => exportToCSV("purchase_orders", filteredOrders.map(o => ({
+                                    "PO Number": o.po_number,
+                                    Supplier: o.supplier_name,
+                                    Date: o.date,
+                                    "Amount ($)": o.total_amount,
+                                    Status: o.status,
+                                })))}
+                            >
+                                <Download className="h-4 w-4" /> Export CSV
+                            </Button>
+                        </div>
+                        {/* Search + filter toolbar */}
+                        <div className="flex flex-col gap-2 sm:flex-row mt-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <input
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pl-9 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    placeholder="Search by PO number or supplier…"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-full sm:w-40">
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                    <SelectItem value="Approved">Approved</SelectItem>
+                                    <SelectItem value="Shipped">Shipped</SelectItem>
+                                    <SelectItem value="In Transit">In Transit</SelectItem>
+                                    <SelectItem value="Delivered">Delivered</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -235,8 +294,10 @@ const PurchaseOrders = () => {
                             <TableBody>
                                 {loading ? (
                                     <TableRow><TableCell colSpan={6} className="text-center">Loading orders...</TableCell></TableRow>
+                                ) : filteredOrders.length === 0 ? (
+                                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow>
                                 ) : (
-                                    orders.map((order) => (
+                                    filteredOrders.map((order) => (
                                         <TableRow key={order.id}>
                                             <TableCell className="font-medium">{order.po_number}</TableCell>
                                             <TableCell>{order.date}</TableCell>

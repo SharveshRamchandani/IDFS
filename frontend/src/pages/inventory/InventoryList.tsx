@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getInventory, createProduct, deleteProduct } from "@/lib/api";
+import { exportToCSV } from "@/lib/exportCsv";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { IconSearch, IconDownload, IconPlus, IconPackage, IconTrash } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -172,9 +173,20 @@ export default function InventoryList() {
                 <CardDescription>Manage and track all products across categories</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() =>
+                  exportToCSV("inventory", filteredProducts.map(p => ({
+                    Name: p.product_name,
+                    SKU: p.sku,
+                    Category: p.category,
+                    Stock: p.availableStock,
+                    Threshold: p.threshold,
+                    Status: p.status,
+                    Location: p.location,
+                    "Last Updated": p.lastUpdated,
+                  })))
+                }>
                   <IconDownload className="mr-2 h-4 w-4" />
-                  Export
+                  Export CSV
                 </Button>
                 <Dialog open={open} onOpenChange={setOpen}>
                   <DialogTrigger asChild>

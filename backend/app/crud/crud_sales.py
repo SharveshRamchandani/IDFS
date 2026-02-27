@@ -102,20 +102,54 @@ def get_avg_daily_sales(db: Session) -> float:
     return 0.0
 
 def get_top_stores(db: Session, limit: int = 5):
-    # Group by Store, Sum Revenue, Order Desc
-    return (
+    """
+    Rank stores by revenue (qty × price). 
+    If no prices are set in the DB, fall back to ranking by quantity.
+    Returns dicts with store_id, region, revenue (or quantity), and metric_label.
+    """
+    from sqlalchemy import case
+
+    # Try revenue first (COALESCE handles NULL price → 0)
+    rows = (
         db.query(
-            Store.store_id, 
+            Store.store_id,
             Store.region,
-            func.sum(SalesData.quantity * Product.price).label("revenue")
+            func.sum(
+                SalesData.quantity * func.coalesce(Product.price, 0)
+            ).label("revenue"),
+            func.sum(SalesData.quantity).label("total_qty"),
         )
-        .join(SalesData)
-        .join(Product)
+        .join(SalesData, SalesData.store_id == Store.id)
+        .join(Product, Product.id == SalesData.sku_id)
         .group_by(Store.id, Store.store_id, Store.region)
-        .order_by(func.sum(SalesData.quantity * Product.price).desc())
+        .order_by(func.sum(SalesData.quantity * func.coalesce(Product.price, 0)).desc())
         .limit(limit)
         .all()
     )
+
+    # If all revenue is 0 (no prices in DB), switch to quantity ranking
+    total_revenue = sum(r.revenue or 0 for r in rows)
+    if total_revenue == 0:
+        rows = sorted(rows, key=lambda r: r.total_qty or 0, reverse=True)
+        return [
+            {
+                "store_id": r.store_id,
+                "region": r.region,
+                "revenue": r.total_qty or 0,
+                "metric": "quantity",
+            }
+            for r in rows
+        ]
+
+    return [
+        {
+            "store_id": r.store_id,
+            "region": r.region,
+            "revenue": round(float(r.revenue or 0), 2),
+            "metric": "revenue",
+        }
+        for r in rows
+    ]
 
 from datetime import timedelta
     

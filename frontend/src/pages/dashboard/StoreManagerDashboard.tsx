@@ -9,6 +9,8 @@ import {
   IconShoppingCart,
   IconTruck,
   IconLoader2,
+  IconCalendarStats,
+  IconCurrencyDollar,
 } from "@tabler/icons-react";
 import {
   PolarAngleAxis,
@@ -197,8 +199,8 @@ export default function StoreManagerDashboard() {
               ) : (
                 <StatCard
                   title="Low Stock Items"
-                  value={stats?.summary?.total_stores ?? "—"}
-                  description="Requiring attention"
+                  value={stats?.summary?.low_stock_count ?? "—"}
+                  description={`${stats?.summary?.out_of_stock_count ?? 0} out of stock`}
                   icon={IconAlertTriangle}
                   accent="text-amber-500"
                 />
@@ -250,6 +252,66 @@ export default function StoreManagerDashboard() {
           </BentoCell>
         </BentoGrid>
 
+        {/* ── Today's Sales Banner ── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            {
+              icon: IconCalendarStats,
+              label: "Today's Date",
+              value: stats?.today?.date
+                ? new Date(stats.today.date + "T00:00:00").toLocaleDateString(undefined, {
+                  weekday: "short", day: "numeric", month: "short", year: "numeric",
+                })
+                : new Date().toLocaleDateString(undefined, {
+                  weekday: "short", day: "numeric", month: "short", year: "numeric",
+                }),
+              sub: "Current trading day",
+              accent: "text-primary",
+            },
+            {
+              icon: IconShoppingCart,
+              label: "Today's Transactions",
+              value: isLoading ? "—" : (stats?.today?.records ?? 0).toLocaleString(),
+              sub: "sales records today",
+              accent: "text-emerald-500",
+            },
+            {
+              icon: IconPackage,
+              label: "Today's Units Sold",
+              value: isLoading ? "—" : (stats?.today?.quantity ?? 0).toLocaleString(),
+              sub: "units across all stores",
+              accent: "text-violet-500",
+            },
+            {
+              icon: IconCurrencyDollar,
+              label: "Today's Revenue",
+              value: isLoading
+                ? "—"
+                : `$${(stats?.today?.revenue ?? 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`,
+              sub: "gross revenue today",
+              accent: "text-blue-500",
+            },
+          ].map((kpi) => (
+            <BentoCell key={kpi.label}>
+              <div className="flex flex-col gap-2 p-5 h-full">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
+                  <span className={`rounded-lg bg-muted p-1.5 ${kpi.accent}`}>
+                    <kpi.icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <div className={`text-2xl font-extrabold tabular-nums tracking-tight ${kpi.accent}`}>
+                  {kpi.value}
+                </div>
+                <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+              </div>
+            </BentoCell>
+          ))}
+        </div>
+
         {/* ── Row 2: Sales Trend Chart (full width) ── */}
         <BentoCell className="rounded-2xl overflow-hidden">
 
@@ -264,11 +326,11 @@ export default function StoreManagerDashboard() {
             <ReorderSuggestions />
 
           </BentoCell>
-       
-           
-              <LowStockAlerts />
-           
-       
+
+
+          <LowStockAlerts />
+
+
         </div>
 
       </div>

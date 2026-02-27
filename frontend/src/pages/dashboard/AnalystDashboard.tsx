@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
-  Line
 } from "recharts";
 import {
   Select,
@@ -154,9 +153,13 @@ export default function AnalystDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="colorConfidence" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <linearGradient id="gradForecast" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.03} />
+                      </linearGradient>
+                      <linearGradient id="gradConfidence" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -182,28 +185,37 @@ export default function AnalystDashboard() {
                       }}
                     />
                     <Legend />
+                    {/* Upper bound — invisible stroke, fills the confidence band */}
                     <Area
                       type="monotone"
                       dataKey="upper"
-                      stackId="1"
+                      stackId="ci"
                       stroke="transparent"
-                      fill="none"
+                      fill="url(#gradConfidence)"
+                      name="Upper Bound"
+                      legendType="none"
                     />
+                    {/* Lower bound — closes the confidence band */}
                     <Area
                       type="monotone"
                       dataKey="lower"
-                      stackId="2"
-                      stroke="transparent"
-                      fill="hsl(var(--primary))"
-                      fillOpacity={0.1}
+                      stackId="ci2"
+                      stroke="#22c55e"
+                      strokeDasharray="4 3"
+                      strokeWidth={1}
+                      fill="transparent"
+                      fillOpacity={0}
                       name="Confidence Interval"
                     />
-                    <Line
+                    {/* Forecast line + fill under it */}
+                    <Area
                       type="monotone"
                       dataKey="forecast"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
+                      stroke="#3b82f6"
+                      strokeWidth={2.5}
+                      fill="url(#gradForecast)"
                       dot={false}
+                      activeDot={{ r: 5, fill: "#3b82f6" }}
                       name="Forecast"
                     />
                   </AreaChart>

@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, MapPin, Calendar, Plane, Ship, Clock } from "lucide-react";
+import { Truck, MapPin, Calendar, Plane, Ship, Clock, Search, Download } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrackingTimeline } from "@/components/TrackingTimeline";
+import { exportToCSV } from "@/lib/exportCsv";
 import { getShipments } from "@/lib/api";
 import {
     Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -111,6 +113,22 @@ const InboundShipments = () => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [trackShipment, setTrackShipment] = useState<any | null>(null);
     const [trackOpen, setTrackOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+
+    const filteredShipments = useMemo(() =>
+        shipments.filter(s => {
+            const q = search.toLowerCase();
+            const matchSearch = !q ||
+                s.tracking_number?.toLowerCase().includes(q) ||
+                s.origin?.toLowerCase().includes(q) ||
+                s.destination?.toLowerCase().includes(q) ||
+                s.carrier?.toLowerCase().includes(q);
+            const matchStatus = statusFilter === "all" || s.status === statusFilter;
+            return matchSearch && matchStatus;
+        }),
+        [shipments, search, statusFilter]
+    );
 
     useEffect(() => {
         const fetchShipments = async () => {
@@ -170,8 +188,49 @@ const InboundShipments = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Active Shipments</CardTitle>
-                        <CardDescription>Monitor status and ETA of incoming inventory.</CardDescription>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <CardTitle>Active Shipments</CardTitle>
+                                <CardDescription>Monitor status and ETA of incoming inventory.</CardDescription>
+                            </div>
+                            <Button
+                                variant="outline" size="sm" className="gap-1.5"
+                                onClick={() => exportToCSV("shipments", filteredShipments.map(s => ({
+                                    "Tracking ID": s.tracking_number || s.id,
+                                    Origin: s.origin,
+                                    Destination: s.destination,
+                                    Mode: s.mode,
+                                    Carrier: s.carrier,
+                                    ETA: s.eta,
+                                    Status: s.status,
+                                })))}
+                            >
+                                <Download className="h-4 w-4" /> Export CSV
+                            </Button>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row mt-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <input
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pl-9 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    placeholder="Search by tracking ID, origin, carrier…"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-full sm:w-40">
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="In Transit">In Transit</SelectItem>
+                                    <SelectItem value="Arrived">Arrived</SelectItem>
+                                    <SelectItem value="Delayed">Delayed</SelectItem>
+                                    <SelectItem value="Processing">Processing</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -190,8 +249,10 @@ const InboundShipments = () => {
                             <TableBody>
                                 {loading ? (
                                     <TableRow><TableCell colSpan={8} className="text-center">Loading shipments...</TableCell></TableRow>
+                                ) : filteredShipments.length === 0 ? (
+                                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No shipments match your search.</TableCell></TableRow>
                                 ) : (
-                                    shipments.map((shipment) => (
+                                    filteredShipments.map((shipment) => (
                                         <TableRow key={shipment.id}>
                                             <TableCell className="font-medium">{shipment.tracking_number || shipment.id}</TableCell>
                                             <TableCell>{shipment.origin}</TableCell>
