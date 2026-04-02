@@ -1,4 +1,39 @@
-export const API_URL = "http://localhost:5000/api/v1";
+const DEFAULT_PRODUCTION_API_URL = "https://idfs.onrender.com/api/v1";
+
+function isLocalHostname(hostname: string) {
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function resolveApiUrl() {
+    const configuredUrl = import.meta.env.VITE_API_URL?.trim();
+    const currentHostname = window.location.hostname;
+    const isPublicDeployment = !isLocalHostname(currentHostname);
+
+    if (!configuredUrl) {
+        return isPublicDeployment
+            ? DEFAULT_PRODUCTION_API_URL
+            : "http://localhost:8000/api/v1";
+    }
+
+    try {
+        const parsedUrl = new URL(configuredUrl);
+        if (isPublicDeployment && isLocalHostname(parsedUrl.hostname)) {
+            console.warn(
+                `Ignoring localhost API URL "${configuredUrl}" on public host "${currentHostname}". Falling back to ${DEFAULT_PRODUCTION_API_URL}.`
+            );
+            return DEFAULT_PRODUCTION_API_URL;
+        }
+    } catch {
+        console.warn(
+            `Invalid VITE_API_URL "${configuredUrl}". Falling back to ${DEFAULT_PRODUCTION_API_URL}.`
+        );
+        return DEFAULT_PRODUCTION_API_URL;
+    }
+
+    return configuredUrl;
+}
+
+export const API_URL = resolveApiUrl();
 
 export async function login(username, password) {
     const formData = new FormData();
